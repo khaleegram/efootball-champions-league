@@ -1,0 +1,66 @@
+"use client"
+
+import Link from "next/link"
+import { usePathname } from "next/navigation"
+import { Trophy, PlusCircle, UserCircle, LogOut, PanelLeft } from "lucide-react"
+
+import { cn } from "@/lib/utils"
+import { useAuth } from "@/hooks/use-auth"
+import { handleSignOut } from "@/lib/actions"
+import { Button } from "@/components/ui/button"
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuItem,
+  SidebarMenuButton,
+  SidebarFooter,
+} from "@/components/ui/sidebar"
+
+const menuItems = [
+  { href: "/dashboard", label: "My Tournaments", icon: Trophy },
+  { href: "/dashboard/create-tournament", label: "Create Tournament", icon: PlusCircle },
+  { href: "/profile", label: "Profile", icon: UserCircle },
+]
+
+export function DashboardSidebar() {
+  const pathname = usePathname()
+  const { user } = useAuth()
+  
+  if (!user) return null
+
+  return (
+    <Sidebar>
+        <SidebarHeader>
+            <div className="flex items-center gap-2">
+                <Trophy className="size-8 text-primary" />
+                <div className="flex flex-col">
+                    <h2 className="text-lg font-semibold tracking-tighter font-headline">eArena</h2>
+                    <p className="text-xs text-muted-foreground">Organizer Dashboard</p>
+                </div>
+            </div>
+        </SidebarHeader>
+        <SidebarContent>
+            <SidebarMenu>
+            {menuItems.map((item) => (
+                <SidebarMenuItem key={item.href}>
+                    <Link href={item.href} legacyBehavior passHref>
+                        <SidebarMenuButton isActive={pathname === item.href}>
+                            <item.icon />
+                            <span>{item.label}</span>
+                        </SidebarMenuButton>
+                    </Link>
+                </SidebarMenuItem>
+            ))}
+            </SidebarMenu>
+        </SidebarContent>
+        <SidebarFooter>
+            <Button variant="ghost" className="w-full justify-start gap-2" onClick={() => handleSignOut()}>
+                <LogOut className="size-4" />
+                <span>Logout</span>
+            </Button>
+        </SidebarFooter>
+    </Sidebar>
+  )
+}
