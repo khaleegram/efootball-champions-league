@@ -1,13 +1,9 @@
-
-"use server";
+'use server';
 
 import { adminDb } from './firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
-import type { Tournament, UserProfile, Team, Match } from './types';
+import type { Tournament, UserProfile, Team, Match, Standing } from './types';
 import { calculateTournamentStandings } from '@/ai/flows/calculate-tournament-standings';
-
-// This file contains server-side actions that interact with Firestore.
-// All functions now correctly use the Firebase Admin SDK.
 
 // USER PROFILE ACTIONS
 export async function updateUserProfile(uid: string, data: Partial<UserProfile>) {
@@ -16,12 +12,10 @@ export async function updateUserProfile(uid: string, data: Partial<UserProfile>)
 }
 
 // TOURNAMENT ACTIONS
-export async function createTournament(data: Omit<Tournament, 'id' | 'startDate' | 'endDate'> & { dates: { from: Date, to: Date }}) {
-  const { dates, ...rest } = data;
+export async function createTournament(data: Omit<Tournament, 'id' | 'createdAt'> & { organizerId: string }) {
+  const { ...rest } = data;
   const docRef = await adminDb.collection('tournaments').add({
     ...rest,
-    startDate: dates.from,
-    endDate: dates.to,
     createdAt: FieldValue.serverTimestamp(),
   });
   return docRef.id;
@@ -49,11 +43,13 @@ export async function approveMatchResult(matchId: string, tournamentId: string) 
   await matchRef.update({ status: 'approved' });
 
   // 2. Fetch all approved matches and teams for the tournament
-  const matchesQuery = adminDb.collection(`tournaments/${tournamentId}/matches`).where('status', '==', 'approved');
+  const matchesQuery = adminDb
+      .collection(`tournaments/${tournamentId}/matches`)
+      .where('status', '==', 'approved');
   const teamsQuery = adminDb.collection(`tournaments/${tournamentId}/teams`);
 
   const [matchesSnapshot, teamsSnapshot] = await Promise.all([matchesQuery.get(), teamsQuery.get()]);
-
+  
   const approvedMatches = matchesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Match[];
   const teams = teamsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
@@ -75,19 +71,19 @@ export async function approveMatchResult(matchId: string, tournamentId: string) 
   // 4. Call GenAI to calculate standings
   const standingsResult = await calculateTournamentStandings(aiInput);
 
-  // 5. Update standings in Firestore
+  // 5. Update standings in Firestore using a batch write
   const batch = adminDb.batch();
-  const standingsCollection = adminDb.collection('standings');
+  const standingsCollectionRef = adminDb.collection('standings');
 
   // First, delete old standings for this tournament to prevent duplicates
-  const oldStandingsQuery = standingsCollection.where('tournamentId', '==', tournamentId);
+  const oldStandingsQuery = standingsCollectionRef.where('tournamentId', '==', tournamentId);
   const oldStandingsSnapshot = await oldStandingsQuery.get();
   oldStandingsSnapshot.forEach(doc => batch.delete(doc.ref));
 
   // Then, add the new standings
   standingsResult.forEach(standing => {
     const teamName = teams.find(t => t.id === standing.teamId)?.name || 'Unknown Team';
-    const newStandingRef = standingsCollection.doc();
+    const newStandingRef = standingsCollectionRef.doc(); // Create a new doc reference
     batch.set(newStandingRef, {
       ...standing,
       tournamentId,

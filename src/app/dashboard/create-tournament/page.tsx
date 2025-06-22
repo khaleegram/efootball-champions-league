@@ -65,10 +65,23 @@ export default function CreateTournamentPage() {
     }
     setIsLoading(true);
     try {
-      const tournamentId = await createTournament({ ...values, organizerId: user.uid });
+      const tournamentData = {
+        name: values.name,
+        description: values.description,
+        game: values.game,
+        platform: values.platform,
+        startDate: values.dates.from,
+        endDate: values.dates.to,
+        maxTeams: values.maxTeams,
+        rules: values.rules || '',
+        organizerId: user.uid,
+      };
+
+      const tournamentId = await createTournament(tournamentData);
       toast({ title: "Success!", description: "Your tournament has been created." });
       router.push(`/tournaments/${tournamentId}`);
     } catch (error) {
+      console.error(error);
       toast({ variant: "destructive", title: "Error", description: "Failed to create tournament. Please try again." });
     } finally {
       setIsLoading(false);

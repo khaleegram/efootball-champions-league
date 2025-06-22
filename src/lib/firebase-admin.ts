@@ -2,26 +2,28 @@ import admin from 'firebase-admin';
 
 // This file is for server-side code only.
 
-// Check if the app is already initialized to prevent errors during hot-reloading in development.
-if (!admin.apps.length) {
-  const serviceAccountString = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
-  if (!serviceAccountString) {
-      throw new Error('CRITICAL: FIREBASE_SERVICE_ACCOUNT_KEY environment variable is not set. This is required for server-side authentication.');
-  }
+// Ensure the service account key is available
+if (!process.env.FIREBASE_SERVICE_ACCOUNT_KEY) {
+  throw new Error('FIREBASE_SERVICE_ACCOUNT_KEY is not set in the environment variables.');
+}
 
+// Initialize Firebase Admin SDK if not already initialized
+if (!admin.apps.length) {
   try {
-    // Parse the service account key from the environment variable.
-    const serviceAccount = JSON.parse(serviceAccountString);
+    const serviceAccount = JSON.parse(
+      process.env.FIREBASE_SERVICE_ACCOUNT_KEY
+    );
     admin.initializeApp({
       credential: admin.credential.cert(serviceAccount),
+      projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
     });
   } catch (error: any) {
-    console.error('CRITICAL: Firebase Admin SDK initialization error. Failed to parse FIREBASE_SERVICE_ACCOUNT_KEY. Ensure it is a valid, single-line JSON string in your .env file.', error.message);
-    // Throwing an error is critical here to prevent the app from running in a misconfigured state.
-    throw new Error('Firebase Admin SDK failed to initialize. Check server logs for details.');
+    console.error('Firebase admin initialization error:', error.stack);
+    throw new Error('Could not initialize Firebase Admin SDK. Please check your service account credentials in .env');
   }
 }
 
-// Export the initialized admin services.
-export const adminAuth = admin.auth();
-export const adminDb = admin.firestore();
+const adminDb = admin.firestore();
+const adminAuth = admin.auth();
+
+export { admin, adminDb, adminAuth };

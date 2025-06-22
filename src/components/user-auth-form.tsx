@@ -6,7 +6,6 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useRouter } from 'next/navigation';
-import type { User } from 'firebase/auth';
 import { 
   createUserWithEmailAndPassword, 
   signInWithEmailAndPassword, 
@@ -42,35 +41,6 @@ export function UserAuthForm({ className, mode, ...props }: UserAuthFormProps) {
     resolver: zodResolver(formSchema),
   });
 
-  // This function is called after a user is successfully authenticated with Firebase (client-side)
-  const handleAuthSuccess = async (user: User) => {
-    try {
-      // Get the Firebase ID token from the user.
-      const idToken = await user.getIdToken();
-      
-      // Send the token to our API route to create a server-side session cookie.
-      const response = await fetch('/api/auth/session', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ idToken }),
-      });
-
-      if (response.ok) {
-        // The cookie is set, now we can safely navigate to the dashboard.
-        router.push('/dashboard');
-      } else {
-        throw new Error('Failed to create session on the server.');
-      }
-    } catch (error) {
-      console.error(error);
-      toast({
-        variant: 'destructive',
-        title: 'Session Error',
-        description: 'Could not create a session. Please try logging in again.',
-      });
-    }
-  };
-
   const onSubmit = async (data: UserFormValue) => {
     setIsLoading(true);
     try {
@@ -86,14 +56,14 @@ export function UserAuthForm({ className, mode, ...props }: UserAuthFormProps) {
           username: userCredential.user.email?.split('@')[0] || `user_${Date.now()}`,
         });
       }
-      // After successful Firebase auth, proceed to create the server session.
-      await handleAuthSuccess(userCredential.user);
+      router.push('/dashboard');
     } catch (error: any) {
       let message = 'An unknown error occurred.';
       if (error.code) {
         switch (error.code) {
           case 'auth/user-not-found':
-            message = 'No account found with this email address.';
+          case 'auth/invalid-credential':
+            message = 'Incorrect email or password. Please try again.';
             break;
           case 'auth/wrong-password':
             message = 'Incorrect password. Please try again.';
@@ -121,7 +91,7 @@ export function UserAuthForm({ className, mode, ...props }: UserAuthFormProps) {
           email: userCredential.user.email,
           username: userCredential.user.displayName || userCredential.user.email?.split('@')[0],
       }, { merge: true });
-      await handleAuthSuccess(userCredential.user);
+      router.push('/dashboard');
     } catch (error: any) {
       toast({
         variant: 'destructive',

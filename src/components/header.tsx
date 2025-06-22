@@ -26,7 +26,6 @@ export function Header() {
   const onSignOut = async () => {
     try {
       await signOut(auth);
-      await fetch('/api/auth/session', { method: 'DELETE' });
       router.push('/');
     } catch (error) {
       console.error("Sign out failed:", error);

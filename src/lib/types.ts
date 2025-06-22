@@ -16,11 +16,12 @@ export interface Tournament {
   description: string;
   game: string;
   platform: string;
-  startDate: Timestamp | string; // Allow string for serialized dates
-  endDate: Timestamp | string; // Allow string for serialized dates
+  startDate: Date | Timestamp; 
+  endDate: Date | Timestamp;
   maxTeams: number;
   rules: string;
   organizerId: string;
+  createdAt?: Timestamp;
 }
 
 export interface Team {
@@ -41,7 +42,7 @@ export interface Match {
   awayTeamName?: string;
   homeScore: number | null;
   awayScore: number | null;
-  matchDate: Timestamp;
+  matchDate: Date | Timestamp;
   status: 'scheduled' | 'pending_approval' | 'approved' | 'disputed';
   evidenceUrl?: string;
 }
@@ -49,6 +50,7 @@ export interface Match {
 export interface Standing {
   teamId: string;
   teamName?: string;
+  tournamentId: string;
   wins: number;
   losses: number;
   draws: number;
