@@ -17,8 +17,7 @@ function ensureAdminInitialized(): void {
   }
 
   try {
-    const serviceAccountString = process.env.FIREBASE_SERVICE_ACCOUNT_KEY.replace(/^'|'$/g, '');
-    const serviceAccount = JSON.parse(serviceAccountString);
+    const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY);
     
     // Let Firebase Admin infer the project ID from the credential itself.
     // This is more robust and avoids potential mismatches with other environment variables.
@@ -26,7 +25,7 @@ function ensureAdminInitialized(): void {
       credential: admin.credential.cert(serviceAccount)
     });
   } catch (error: any) {
-    console.error('Firebase admin initialization error:', error.stack);
+    console.error('Firebase admin initialization error:', error);
     throw new Error("Could not initialize Firebase Admin SDK. Your FIREBASE_SERVICE_ACCOUNT_KEY in the .env file might be a malformed JSON string. Please ensure it is a single line enclosed in single quotes, like `FIREBASE_SERVICE_ACCOUNT_KEY='{\"key\": \"value\" ...}'`.");
   }
 }
