@@ -5,6 +5,7 @@ import * as React from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
+import { useRouter } from 'next/navigation';
 
 import { cn } from '@/lib/utils';
 import { Button, buttonVariants } from '@/components/ui/button';
@@ -27,6 +28,7 @@ type UserFormValue = z.infer<typeof formSchema>;
 
 export function UserAuthForm({ className, mode, ...props }: UserAuthFormProps) {
   const { toast } = useToast();
+  const router = useRouter();
   const [isLoading, setIsLoading] = React.useState<boolean>(false);
   const [isGoogleLoading, setIsGoogleLoading] = React.useState<boolean>(false);
 
@@ -42,8 +44,8 @@ export function UserAuthForm({ className, mode, ...props }: UserAuthFormProps) {
       } else {
         await handleSignUp(data.email, data.password);
       }
-      // The redirect is now handled by the AuthLayout
       toast({ title: mode === 'login' ? 'Login successful!' : 'Account created!', description: "Redirecting to your dashboard..." });
+      router.push('/dashboard');
     } catch (error: any) {
       let message = 'An unknown error occurred.';
       const code = error.code;
@@ -67,7 +69,7 @@ export function UserAuthForm({ className, mode, ...props }: UserAuthFormProps) {
         title: 'Authentication Error',
         description: message,
       });
-      // Only set loading to false on error, so the user can try again
+    } finally {
       setIsLoading(false);
     }
   };
@@ -76,15 +78,15 @@ export function UserAuthForm({ className, mode, ...props }: UserAuthFormProps) {
     setIsGoogleLoading(true);
     try {
       await handleGoogleSignIn();
-      // The redirect is now handled by the AuthLayout
       toast({ title: 'Login successful!', description: "Redirecting to your dashboard..." });
+      router.push('/dashboard');
     } catch (error: any) {
        toast({
         variant: 'destructive',
         title: 'Google Sign-In Error',
         description: error.message || 'Could not sign in with Google. Please try again.',
       });
-      // Only set loading to false on error, so the user can try again
+    } finally {
       setIsGoogleLoading(false);
     }
   }

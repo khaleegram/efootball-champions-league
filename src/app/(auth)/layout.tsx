@@ -13,15 +13,24 @@ export default function AuthLayout({
   const { user, loading } = useAuth();
   const router = useRouter();
 
+  // Wait for the auth state to be resolved
+  if (loading) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  // If auth is resolved and there IS a user, redirect to dashboard.
   useEffect(() => {
-    // If auth state is resolved and there IS a user, redirect to dashboard.
-    if (!loading && user) {
+    if (user) {
       router.replace('/dashboard');
     }
-  }, [user, loading, router]);
+  }, [user, router]);
 
-  // While the auth state is being checked, or if a user exists (and is about to be redirected), show a loader.
-  if (loading || user) {
+  // If there is a user, show a loader while redirecting.
+  if (user) {
     return (
       <div className="flex h-screen w-full items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />

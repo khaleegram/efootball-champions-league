@@ -16,14 +16,7 @@ export default function DashboardLayout({
   const { user, loading } = useAuth()
   const router = useRouter()
 
-  useEffect(() => {
-    // If the auth state is resolved and there's no user, redirect to login.
-    if (!loading && !user) {
-      router.replace('/login');
-    }
-  }, [user, loading, router]);
-
-  // While the auth state is being checked, display a loader.
+  // Wait for the auth state to be resolved
   if (loading) {
     return (
       <div className="flex h-screen w-full items-center justify-center">
@@ -32,8 +25,15 @@ export default function DashboardLayout({
     );
   }
 
-  // If there is a user, render the dashboard. Otherwise, the useEffect
-  // will handle the redirect, and we can show a loader in the meantime.
+  // If auth is resolved and there is no user, redirect to login page.
+  useEffect(() => {
+    if (!user) {
+      router.replace('/login');
+    }
+  }, [user, router]);
+  
+
+  // If there is a user, render the dashboard.
   if (user) {
     return (
       <SidebarProvider>
@@ -47,8 +47,7 @@ export default function DashboardLayout({
     )
   }
 
-  // This loader is shown for the brief moment a non-authenticated user
-  // hits this page before the redirect logic in useEffect fires.
+  // If there is no user, a loader is shown while the redirect is in progress.
   return (
     <div className="flex h-screen w-full items-center justify-center">
       <Loader2 className="h-8 w-8 animate-spin text-primary" />
