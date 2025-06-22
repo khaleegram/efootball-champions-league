@@ -13,15 +13,24 @@ async function getTournament(id: string): Promise<Tournament | null> {
     if (!data) {
       return null;
     }
-    // Manually convert Timestamps to serializable format for client components
+    // Manually convert Timestamps to serializable format for client components,
+    // with a check to prevent crashes if the data is not a Timestamp.
+    const startDate = data.startDate && typeof data.startDate.toDate === 'function' 
+      ? (data.startDate as Timestamp).toDate().toISOString() 
+      : data.startDate;
+      
+    const endDate = data.endDate && typeof data.endDate.toDate === 'function'
+      ? (data.endDate as Timestamp).toDate().toISOString()
+      : data.endDate;
+
     return {
       id: docSnap.id,
       name: data.name,
       description: data.description,
       game: data.game,
       platform: data.platform,
-      startDate: (data.startDate as Timestamp).toDate().toISOString(),
-      endDate: (data.endDate as Timestamp).toDate().toISOString(),
+      startDate: startDate,
+      endDate: endDate,
       maxTeams: data.maxTeams,
       rules: data.rules,
       organizerId: data.organizerId,

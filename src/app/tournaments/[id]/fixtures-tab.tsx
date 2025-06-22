@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { db, storage } from "@/lib/firebase";
-import { collection, onSnapshot, query, where, doc, getDocs, updateDoc } from "firebase/firestore";
+import { collection, onSnapshot, query, where, doc, getDocs, updateDoc, type Timestamp } from "firebase/firestore";
 import type { Match, Team } from "@/lib/types";
 import { useAuth } from "@/hooks/use-auth";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -32,9 +32,17 @@ export function FixturesTab({ tournamentId, isOrganizer }: { tournamentId: strin
         const teamQuery = query(collection(db, `tournaments/${tournamentId}/teams`));
 
         const unsubMatches = onSnapshot(matchQuery, snapshot => {
-            const matchesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Match));
+            const matchesData = snapshot.docs.map(doc => {
+                 const data = doc.data();
+                 return { 
+                    id: doc.id, 
+                    ...data,
+                    // Correctly convert Firestore Timestamp to JS Date object
+                    matchDate: (data.matchDate as Timestamp)?.toDate ? (data.matchDate as Timestamp).toDate() : new Date(data.matchDate),
+                } as Match;
+            });
             setMatches(matchesData);
-            if(teams.length > 0) setLoading(false);
+            if(teams.length > 0 || snapshot.docs.length === 0) setLoading(false);
         });
 
         const unsubTeams = onSnapshot(teamQuery, snapshot => {
@@ -47,7 +55,7 @@ export function FixturesTab({ tournamentId, isOrganizer }: { tournamentId: strin
             unsubMatches();
             unsubTeams();
         };
-    }, [tournamentId]);
+    }, [tournamentId, teams.length]);
 
     const getTeamName = (teamId: string) => teams.find(t => t.id === teamId)?.name || 'Unknown Team';
     const getTeamLogo = (teamId: string) => teams.find(t => t.id === teamId)?.logoUrl;
@@ -110,7 +118,7 @@ function MatchCard({ match, getTeamName, isOrganizer, tournamentId }: { match: M
         <div className="border rounded-lg p-4 space-y-4">
             <div className="flex justify-between items-start">
                 <div>
-                    <div className="text-xs text-muted-foreground">{format(match.matchDate.toDate(), 'PPP p')}</div>
+                    <div className="text-xs text-muted-foreground">{format(new Date(match.matchDate as string), 'PPP p')}</div>
                     {statusBadge}
                 </div>
                 <div className="flex gap-2">

@@ -15,7 +15,6 @@ if (!admin.apps.length) {
     admin.initializeApp({
       credential: admin.credential.cert(serviceAccount),
     });
-     console.log('Firebase Admin SDK initialized successfully.');
   } catch (error: any) {
     console.error('CRITICAL: Firebase Admin SDK initialization error. Failed to parse FIREBASE_SERVICE_ACCOUNT_KEY. Ensure it is a valid, single-line JSON string in your .env file.', error.message);
     // Throwing an error is critical here to prevent the app from running in a misconfigured state.

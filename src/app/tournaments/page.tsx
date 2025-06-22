@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { db } from '@/lib/firebase';
-import { collection, query, onSnapshot, orderBy } from 'firebase/firestore';
+import { collection, query, onSnapshot, orderBy, type Timestamp } from 'firebase/firestore';
 import type { Tournament } from '@/lib/types';
 
 import { Button } from '@/components/ui/button';
@@ -21,7 +21,15 @@ export default function BrowseTournamentsPage() {
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
       const allTournaments: Tournament[] = [];
       querySnapshot.forEach((doc) => {
-        allTournaments.push({ id: doc.id, ...doc.data() } as Tournament);
+        const data = doc.data();
+        // Correctly convert Firestore Timestamps to JS Date objects
+        const tournamentData = {
+          id: doc.id,
+          ...data,
+          startDate: (data.startDate as Timestamp)?.toDate ? (data.startDate as Timestamp).toDate() : new Date(data.startDate),
+          endDate: (data.endDate as Timestamp)?.toDate ? (data.endDate as Timestamp).toDate() : new Date(data.endDate),
+        } as Tournament;
+        allTournaments.push(tournamentData);
       });
       setTournaments(allTournaments);
       setLoading(false);
@@ -75,7 +83,7 @@ export default function BrowseTournamentsPage() {
                 <CardContent className="flex-grow">
                   <p className="text-sm text-muted-foreground line-clamp-3">{tournament.description}</p>
                    <div className="text-sm text-muted-foreground mt-4">
-                    {format(tournament.startDate.toDate(), 'PPP')} - {format(tournament.endDate.toDate(), 'PPP')}
+                    {format(new Date(tournament.startDate as string), 'PPP')} - {format(new Date(tournament.endDate as string), 'PPP')}
                   </div>
                 </CardContent>
                 <CardFooter>
