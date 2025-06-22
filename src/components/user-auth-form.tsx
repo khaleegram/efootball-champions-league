@@ -6,6 +6,7 @@ import * as React from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
+import { useRouter } from 'next/navigation';
 
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -30,6 +31,7 @@ export function UserAuthForm({ className, mode, ...props }: UserAuthFormProps) {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = React.useState<boolean>(false);
   const [isGoogleLoading, setIsGoogleLoading] = React.useState<boolean>(false);
+  const router = useRouter();
 
   const { register, handleSubmit, formState: { errors } } = useForm<UserFormValue>({
     resolver: zodResolver(formSchema),
@@ -43,9 +45,9 @@ export function UserAuthForm({ className, mode, ...props }: UserAuthFormProps) {
       } else {
         await handleSignUp(data.email, data.password);
       }
+      // The redirect is now handled by the AuthLayout, which will react
+      // to the change in authentication state.
       toast({ title: mode === 'login' ? 'Login successful!' : 'Account created!' });
-      // Force a hard reload to the dashboard to ensure auth state is synced.
-      window.location.assign('/dashboard');
     } catch (error: any) {
       let message = 'An unknown error occurred.';
       const code = error.code;
@@ -78,9 +80,8 @@ export function UserAuthForm({ className, mode, ...props }: UserAuthFormProps) {
     setIsGoogleLoading(true);
     try {
       await handleGoogleSignIn();
+       // The redirect is now handled by the AuthLayout.
       toast({ title: 'Login successful!' });
-      // Force a hard reload to the dashboard to ensure auth state is synced.
-      window.location.assign('/dashboard');
     } catch (error: any) {
        toast({
         variant: 'destructive',
