@@ -86,9 +86,9 @@ export default function CreateTournamentPage() {
       const tournamentId = await createTournament(tournamentData);
       toast({ title: "Success!", description: "Your tournament has been created." });
       router.push(`/tournaments/${tournamentId}`);
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      toast({ variant: "destructive", title: "Error", description: "Failed to create tournament. Please try again." });
+      toast({ variant: "destructive", title: "Error creating tournament", description: error.message || "An unexpected error occurred. Please try again." });
     } finally {
       setIsLoading(false);
     }
