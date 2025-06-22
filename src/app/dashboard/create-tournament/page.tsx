@@ -20,12 +20,16 @@ import { Calendar } from '@/components/ui/calendar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import type { TournamentFormat } from '@/lib/types';
 
 const tournamentSchema = z.object({
   name: z.string().min(3, { message: "Tournament name must be at least 3 characters." }),
   description: z.string().min(10, { message: "Description must be at least 10 characters." }),
   game: z.string().min(1, { message: "Please specify the game." }),
   platform: z.string().min(1, { message: "Please select a platform." }),
+  format: z.custom<TournamentFormat>(val => ['league', 'cup', 'champions-league'].includes(val as string), {
+      message: "Please select a valid tournament format."
+  }),
   dates: z.object({
     from: z.date(),
     to: z.date(),
@@ -49,6 +53,7 @@ export default function CreateTournamentPage() {
       description: '',
       game: 'eFootball 2024',
       platform: 'PS5',
+      format: 'league',
       dates: {
         from: new Date(),
         to: addDays(new Date(), 7),
@@ -70,6 +75,7 @@ export default function CreateTournamentPage() {
         description: values.description,
         game: values.game,
         platform: values.platform,
+        format: values.format,
         startDate: values.dates.from,
         endDate: values.dates.to,
         maxTeams: values.maxTeams,
@@ -162,6 +168,29 @@ export default function CreateTournamentPage() {
                   )}
                 />
             </div>
+             <FormField
+                control={form.control}
+                name="format"
+                render={({ field }) => (
+                <FormItem>
+                    <FormLabel>Tournament Format</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                        <SelectTrigger>
+                        <SelectValue placeholder="Select a format" />
+                        </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                        <SelectItem value="league">League</SelectItem>
+                        <SelectItem value="cup">Cup (Single Elimination)</SelectItem>
+                        <SelectItem value="champions-league">Champions League</SelectItem>
+                    </SelectContent>
+                    </Select>
+                    <FormDescription>Choose the structure of your competition.</FormDescription>
+                    <FormMessage />
+                </FormItem>
+                )}
+            />
              <FormField
                 control={form.control}
                 name="dates"

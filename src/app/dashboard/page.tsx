@@ -4,7 +4,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { db } from '@/lib/firebase';
-import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, type Timestamp } from 'firebase/firestore';
 import { useAuth } from '@/hooks/use-auth';
 import type { Tournament } from '@/lib/types';
 
@@ -12,6 +12,18 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { PlusCircle, ArrowRight, Loader2, ShieldCheck, Gamepad2 } from 'lucide-react';
 import { format } from 'date-fns';
+
+
+const safeToDate = (date: any): Date | null => {
+  if (!date) return null;
+  if (date instanceof Timestamp) return date.toDate();
+  if (typeof date === 'string' || typeof date === 'number') {
+    const d = new Date(date);
+    if (!isNaN(d.getTime())) return d;
+  }
+  return null;
+}
+
 
 export default function MyTournamentsPage() {
   const { user } = useAuth();
@@ -27,16 +39,12 @@ export default function MyTournamentsPage() {
     setLoading(true);
     const q = query(collection(db, 'tournaments'), where('organizerId', '==', user.uid));
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
-      const userTournaments: Tournament[] = [];
-      querySnapshot.forEach((doc) => {
+      const userTournaments = querySnapshot.docs.map(doc => {
         const data = doc.data();
-        const tournamentData = { 
+        return { 
             id: doc.id, 
-            ...data,
-            startDate: data.startDate?.toDate ? data.startDate.toDate() : new Date(data.startDate),
-            endDate: data.endDate?.toDate ? data.endDate.toDate() : new Date(data.endDate),
+            ...data
         } as Tournament;
-        userTournaments.push(tournamentData);
       });
       setTournaments(userTournaments);
       setLoading(false);
@@ -78,34 +86,40 @@ export default function MyTournamentsPage() {
         </div>
       ) : (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {tournaments.map((tournament) => (
-            <Card key={tournament.id} className="flex flex-col bg-card/50 hover:bg-card transition-colors">
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle className="font-headline">{tournament.name}</CardTitle>
-                  <ShieldCheck className="w-5 h-5 text-primary" />
-                </div>
-                <CardDescription className="flex items-center gap-2">
-                  <Gamepad2 className="w-4 h-4"/>
-                  {tournament.game} on {tournament.platform}
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="flex-grow">
-                <p className="text-sm text-muted-foreground line-clamp-3">{tournament.description}</p>
-                <div className="text-sm text-muted-foreground mt-4">
-                  {format(tournament.startDate as Date, 'PPP')} - {format(tournament.endDate as Date, 'PPP')}
-                </div>
-              </CardContent>
-              <CardFooter>
-                <Link href={`/tournaments/${tournament.id}`} className="w-full">
-                  <Button variant="secondary" className="w-full">
-                    Manage Tournament
-                    <ArrowRight className="ml-2 h-4 w-4" />
-                  </Button>
-                </Link>
-              </CardFooter>
-            </Card>
-          ))}
+          {tournaments.map((tournament) => {
+            const startDate = safeToDate(tournament.startDate);
+            const endDate = safeToDate(tournament.endDate);
+            return (
+                <Card key={tournament.id} className="flex flex-col bg-card/50 hover:bg-card transition-colors">
+                <CardHeader>
+                    <div className="flex items-center justify-between">
+                    <CardTitle className="font-headline">{tournament.name}</CardTitle>
+                    <ShieldCheck className="w-5 h-5 text-primary" />
+                    </div>
+                    <CardDescription className="flex items-center gap-2">
+                    <Gamepad2 className="w-4 h-4"/>
+                    {tournament.game} on {tournament.platform}
+                    </CardDescription>
+                </CardHeader>
+                <CardContent className="flex-grow">
+                    <p className="text-sm text-muted-foreground line-clamp-3">{tournament.description}</p>
+                    {startDate && endDate && (
+                        <div className="text-sm text-muted-foreground mt-4">
+                            {format(startDate, 'PPP')} - {format(endDate, 'PPP')}
+                        </div>
+                    )}
+                </CardContent>
+                <CardFooter>
+                    <Link href={`/tournaments/${tournament.id}`} className="w-full">
+                    <Button variant="secondary" className="w-full">
+                        Manage Tournament
+                        <ArrowRight className="ml-2 h-4 w-4" />
+                    </Button>
+                    </Link>
+                </CardFooter>
+                </Card>
+            );
+        })}
         </div>
       )}
     </div>

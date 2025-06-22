@@ -1,6 +1,6 @@
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { CheckCircle, Gamepad2, Trophy, Users } from 'lucide-react';
+import { CircleCheckBig, Gamepad2, Trophy, Users } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 
@@ -8,14 +8,15 @@ export default function Home() {
   return (
     <div className="flex flex-col min-h-screen">
       <main className="flex-grow">
+        {/* Hero Section */}
         <section className="relative w-full py-12 md:py-24 lg:py-32 xl:py-48 overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-br from-background via-background/80 to-blue-950/50 z-0"></div>
-          <Image 
+          <Image
             src="https://placehold.co/1920x1080.png"
             alt="background"
             data-ai-hint="futuristic esports"
-            layout="fill"
-            objectFit="cover"
+            fill
+            style={{objectFit: 'cover'}}
             className="absolute inset-0 z-[-1] opacity-20"
           />
           <div className="container px-4 md:px-6 z-10 relative">
@@ -55,6 +56,7 @@ export default function Home() {
           </div>
         </section>
 
+        {/* Features Section */}
         <section id="features" className="w-full py-12 md:py-24 lg:py-32 bg-background">
           <div className="container px-4 md:px-6">
             <div className="flex flex-col items-center justify-center space-y-4 text-center">
@@ -104,6 +106,7 @@ export default function Home() {
           </div>
         </section>
 
+        {/* CTA Section */}
         <section className="w-full py-12 md:py-24 lg:py-32 bg-secondary/30">
           <div className="container grid items-center justify-center gap-4 px-4 text-center md:px-6">
             <div className="space-y-3">
@@ -115,7 +118,7 @@ export default function Home() {
             <div className="mx-auto w-full max-w-sm space-y-2">
               <Link href="/signup">
                 <Button size="lg" className="w-full bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/20">
-                  <CheckCircle className="mr-2 h-4 w-4" /> Sign Up for Free
+                  <CircleCheckBig className="mr-2 h-4 w-4" /> Sign Up for Free
                 </Button>
               </Link>
             </div>

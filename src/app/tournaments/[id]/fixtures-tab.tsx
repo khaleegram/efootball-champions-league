@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { db, storage } from "@/lib/firebase";
-import { collection, onSnapshot, query, where, doc, getDocs, updateDoc, type Timestamp } from "firebase/firestore";
+import { collection, onSnapshot, query, type Timestamp, orderBy } from "firebase/firestore";
 import type { Match, Team } from "@/lib/types";
 import { useAuth } from "@/hooks/use-auth";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,16 +11,12 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { createMatch, approveMatchResult } from "@/lib/actions";
-import { Loader2, PlusCircle, CheckCircle, Clock, Shield, Upload } from "lucide-react";
+import { approveMatchResult } from "@/lib/actions";
+import { Loader2, CheckCircle, Clock, Shield, Upload } from "lucide-react";
 import { format } from "date-fns";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { CalendarIcon } from "lucide-react";
-import { Calendar } from "@/components/ui/calendar";
-import { cn } from "@/lib/utils";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { Badge } from "@/components/ui/badge";
+import { doc, updateDoc } from "firebase/firestore";
 
 export function FixturesTab({ tournamentId, isOrganizer }: { tournamentId: string, isOrganizer: boolean }) {
     const [matches, setMatches] = useState<Match[]>([]);
@@ -28,46 +24,66 @@ export function FixturesTab({ tournamentId, isOrganizer }: { tournamentId: strin
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const matchQuery = query(collection(db, `tournaments/${tournamentId}/matches`));
+        let active = true;
+
+        const matchQuery = query(collection(db, `tournaments/${tournamentId}/matches`), orderBy("round", "asc"));
         const teamQuery = query(collection(db, `tournaments/${tournamentId}/teams`));
 
+        let teamsLoaded = false;
+        let matchesLoaded = false;
+
+        const checkDone = () => {
+            if (active && teamsLoaded && matchesLoaded) {
+                setLoading(false);
+            }
+        };
+
         const unsubMatches = onSnapshot(matchQuery, snapshot => {
+            if (!active) return;
             const matchesData = snapshot.docs.map(doc => {
                  const data = doc.data();
                  return { 
                     id: doc.id, 
                     ...data,
-                    // Correctly convert Firestore Timestamp to JS Date object
-                    matchDate: (data.matchDate as Timestamp)?.toDate ? (data.matchDate as Timestamp).toDate() : new Date(data.matchDate),
+                    matchDate: (data.matchDate as Timestamp)?.toDate ? (data.matchDate as Timestamp).toDate() : new Date(),
                 } as Match;
             });
             setMatches(matchesData);
-            if(teams.length > 0 || snapshot.docs.length === 0) setLoading(false);
+            matchesLoaded = true;
+            checkDone();
         });
 
         const unsubTeams = onSnapshot(teamQuery, snapshot => {
+            if (!active) return;
             const teamsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Team));
             setTeams(teamsData);
-             if(matches.length >= 0 || snapshot.docs.length === 0) setLoading(false);
+            teamsLoaded = true;
+            checkDone();
         });
 
         return () => {
+            active = false;
             unsubMatches();
             unsubTeams();
         };
-    }, [tournamentId, teams.length]);
+    }, [tournamentId]);
 
     const getTeamName = (teamId: string) => teams.find(t => t.id === teamId)?.name || 'Unknown Team';
-    const getTeamLogo = (teamId: string) => teams.find(t => t.id === teamId)?.logoUrl;
+    
+    const groupedMatches = matches.reduce((acc, match) => {
+        const round = match.round || 'Uncategorized';
+        if (!acc[round]) {
+            acc[round] = [];
+        }
+        acc[round].push(match);
+        return acc;
+    }, {} as Record<string, Match[]>);
 
     return (
         <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-                <div>
-                    <CardTitle className="font-headline">Fixtures</CardTitle>
-                    <CardDescription>Upcoming and completed matches.</CardDescription>
-                </div>
-                {isOrganizer && <CreateMatchDialog tournamentId={tournamentId} teams={teams} />}
+            <CardHeader>
+                <CardTitle className="font-headline">Fixtures & Results</CardTitle>
+                <CardDescription>Upcoming and completed matches.</CardDescription>
             </CardHeader>
             <CardContent>
                 {loading ? (
@@ -75,11 +91,18 @@ export function FixturesTab({ tournamentId, isOrganizer }: { tournamentId: strin
                         <Loader2 className="h-8 w-8 animate-spin text-primary" />
                     </div>
                 ) : matches.length === 0 ? (
-                    <p className="text-muted-foreground text-center py-8">No matches have been scheduled yet.</p>
+                    <p className="text-muted-foreground text-center py-8">No matches have been scheduled yet. The organizer needs to generate fixtures.</p>
                 ) : (
-                    <div className="space-y-4">
-                        {matches.map(match => (
-                            <MatchCard key={match.id} match={match} getTeamName={getTeamName} isOrganizer={isOrganizer} tournamentId={tournamentId} />
+                    <div className="space-y-6">
+                        {Object.entries(groupedMatches).map(([round, roundMatches]) => (
+                            <div key={round}>
+                                <h3 className="text-lg font-semibold mb-2 font-headline">{round}</h3>
+                                <div className="space-y-4">
+                                {roundMatches.map(match => (
+                                    <MatchCard key={match.id} match={match} getTeamName={getTeamName} isOrganizer={isOrganizer} tournamentId={tournamentId} />
+                                ))}
+                                </div>
+                            </div>
                         ))}
                     </div>
                 )}
@@ -89,7 +112,6 @@ export function FixturesTab({ tournamentId, isOrganizer }: { tournamentId: strin
 }
 
 function MatchCard({ match, getTeamName, isOrganizer, tournamentId }: { match: Match, getTeamName: (id: string) => string, isOrganizer: boolean, tournamentId: string }) {
-    const { user } = useAuth();
     const { toast } = useToast();
     const [isApproving, setIsApproving] = useState(false);
     const homeTeamName = getTeamName(match.homeTeamId);
@@ -115,11 +137,10 @@ function MatchCard({ match, getTeamName, isOrganizer, tournamentId }: { match: M
     }[match.status];
 
     return (
-        <div className="border rounded-lg p-4 space-y-4">
+        <div className="border rounded-lg p-4 space-y-4 bg-card/50">
             <div className="flex justify-between items-start">
                 <div>
-                    <div className="text-xs text-muted-foreground">{format(new Date(match.matchDate as string), 'PPP p')}</div>
-                    {statusBadge}
+                     {statusBadge}
                 </div>
                 <div className="flex gap-2">
                     {match.status === 'pending_approval' && isOrganizer && (
@@ -138,83 +159,6 @@ function MatchCard({ match, getTeamName, isOrganizer, tournamentId }: { match: M
                 <div className="flex-1 font-semibold">{awayTeamName}</div>
             </div>
         </div>
-    )
-}
-
-function CreateMatchDialog({ tournamentId, teams }: { tournamentId: string, teams: Team[] }) {
-    const [open, setOpen] = useState(false);
-    const [isSubmitting, setIsSubmitting] = useState(false);
-    const { toast } = useToast();
-    
-    const [homeTeamId, setHomeTeamId] = useState("");
-    const [awayTeamId, setAwayTeamId] = useState("");
-    const [matchDate, setMatchDate] = useState<Date | undefined>(new Date());
-    
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!homeTeamId || !awayTeamId || !matchDate || homeTeamId === awayTeamId) {
-            toast({ variant: "destructive", title: "Invalid Input", description: "Please select two different teams and a date." });
-            return;
-        }
-        setIsSubmitting(true);
-        try {
-            await createMatch({ tournamentId, homeTeamId, awayTeamId, matchDate });
-            toast({ title: "Success", description: "Match created successfully." });
-            setOpen(false);
-        } catch (error) {
-            toast({ variant: "destructive", title: "Error", description: "Failed to create match." });
-        } finally {
-            setIsSubmitting(false);
-        }
-    }
-
-    return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button><PlusCircle className="mr-2 h-4 w-4" /> Schedule Match</Button>
-      </DialogTrigger>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Schedule a New Match</DialogTitle>
-        </DialogHeader>
-        <form onSubmit={handleSubmit}>
-          <div className="grid gap-4 py-4">
-            <div className="space-y-2">
-                <Label>Home Team</Label>
-                <Select onValueChange={setHomeTeamId}>
-                    <SelectTrigger><SelectValue placeholder="Select home team" /></SelectTrigger>
-                    <SelectContent>{teams.map(t => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}</SelectContent>
-                </Select>
-            </div>
-             <div className="space-y-2">
-                <Label>Away Team</Label>
-                <Select onValueChange={setAwayTeamId}>
-                    <SelectTrigger><SelectValue placeholder="Select away team" /></SelectTrigger>
-                    <SelectContent>{teams.map(t => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}</SelectContent>
-                </Select>
-            </div>
-            <div className="space-y-2">
-                <Label>Match Date</Label>
-                <Popover>
-                    <PopoverTrigger asChild>
-                        <Button variant={"outline"} className={cn("w-full justify-start text-left font-normal", !matchDate && "text-muted-foreground")}>
-                            <CalendarIcon className="mr-2 h-4 w-4" />
-                            {matchDate ? format(matchDate, "PPP") : <span>Pick a date</span>}
-                        </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={matchDate} onSelect={setMatchDate} initialFocus /></PopoverContent>
-                </Popover>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Schedule Match
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
     )
 }
 

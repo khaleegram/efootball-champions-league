@@ -5,7 +5,7 @@ import { db, storage } from "@/lib/firebase";
 import { collection, onSnapshot, query } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { useAuth } from "@/hooks/use-auth";
-import type { Team } from "@/lib/types";
+import type { Team, Tournament } from "@/lib/types";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -14,22 +14,23 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { addTeam } from "@/lib/actions";
-import { Loader2, PlusCircle, User, Users } from "lucide-react";
+import { addTeam, generateFixtures } from "@/lib/actions";
+import { Loader2, PlusCircle, User, Users, Bot, AlertTriangle } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 
-export function TeamsTab({ tournamentId, isOrganizer }: { tournamentId: string; isOrganizer: boolean }) {
+export function TeamsTab({ tournament, isOrganizer }: { tournament: Tournament; isOrganizer: boolean }) {
   const [teams, setTeams] = useState<Team[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const q = query(collection(db, `tournaments/${tournamentId}/teams`));
+    const q = query(collection(db, `tournaments/${tournament.id}/teams`));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const teamsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Team[];
       setTeams(teamsData);
       setLoading(false);
     });
     return () => unsubscribe();
-  }, [tournamentId]);
+  }, [tournament.id]);
   
   return (
     <Card>
@@ -38,7 +39,10 @@ export function TeamsTab({ tournamentId, isOrganizer }: { tournamentId: string; 
           <CardTitle className="font-headline flex items-center gap-2"><Users className="w-5 h-5"/>Registered Teams</CardTitle>
           <CardDescription>The teams competing in this tournament.</CardDescription>
         </div>
-        {isOrganizer && <AddTeamDialog tournamentId={tournamentId} />}
+        <div className="flex gap-2">
+            {isOrganizer && tournament.status === 'open_for_registration' && <AddTeamDialog tournamentId={tournament.id} />}
+            {isOrganizer && tournament.status === 'open_for_registration' && teams.length >= 4 && <GenerateFixturesButton tournamentId={tournament.id} />}
+        </div>
       </CardHeader>
       <CardContent>
         {loading ? (
@@ -46,7 +50,7 @@ export function TeamsTab({ tournamentId, isOrganizer }: { tournamentId: string; 
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
         ) : teams.length === 0 ? (
-          <p className="text-muted-foreground text-center py-8">No teams have registered yet.</p>
+          <p className="text-muted-foreground text-center py-8">No teams have registered yet. Registration is open!</p>
         ) : (
           <Table>
             <TableHeader>
@@ -73,6 +77,46 @@ export function TeamsTab({ tournamentId, isOrganizer }: { tournamentId: string; 
       </CardContent>
     </Card>
   );
+}
+
+function GenerateFixturesButton({ tournamentId }: { tournamentId: string }) {
+    const [isLoading, setIsLoading] = useState(false);
+    const { toast } = useToast();
+
+    const handleGenerate = async () => {
+        setIsLoading(true);
+        try {
+            await generateFixtures(tournamentId);
+            toast({ title: "Success!", description: "Fixtures have been generated. The tournament is now in progress." });
+        } catch (error: any) {
+            toast({ variant: "destructive", title: "Error Generating Fixtures", description: error.message || "An unknown error occurred." });
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    return (
+        <AlertDialog>
+            <AlertDialogTrigger asChild>
+                <Button variant="outline" disabled={isLoading}>
+                    {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Bot className="mr-2 h-4 w-4" />}
+                    Generate Fixtures
+                </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                    <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                        This will generate the entire match schedule based on the tournament format. Once generated, team registrations will be locked. This action cannot be undone.
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleGenerate}>Continue</AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
+    );
 }
 
 function AddTeamDialog({ tournamentId }: { tournamentId: string }) {

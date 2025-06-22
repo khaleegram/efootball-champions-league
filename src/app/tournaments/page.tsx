@@ -8,9 +8,19 @@ import type { Tournament } from '@/lib/types';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowRight, Loader2 } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import { format } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
+
+const safeToDate = (date: any): Date | null => {
+  if (!date) return null;
+  if (date instanceof Timestamp) return date.toDate();
+  if (typeof date === 'string' || typeof date === 'number') {
+    const d = new Date(date);
+    if (!isNaN(d.getTime())) return d;
+  }
+  return null;
+}
 
 export default function BrowseTournamentsPage() {
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
@@ -19,17 +29,12 @@ export default function BrowseTournamentsPage() {
   useEffect(() => {
     const q = query(collection(db, 'tournaments'), orderBy('startDate', 'desc'));
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
-      const allTournaments: Tournament[] = [];
-      querySnapshot.forEach((doc) => {
+      const allTournaments = querySnapshot.docs.map((doc) => {
         const data = doc.data();
-        // Correctly convert Firestore Timestamps to JS Date objects
-        const tournamentData = {
+        return {
           id: doc.id,
           ...data,
-          startDate: (data.startDate as Timestamp)?.toDate ? (data.startDate as Timestamp).toDate() : new Date(data.startDate),
-          endDate: (data.endDate as Timestamp)?.toDate ? (data.endDate as Timestamp).toDate() : new Date(data.endDate),
         } as Tournament;
-        allTournaments.push(tournamentData);
       });
       setTournaments(allTournaments);
       setLoading(false);
@@ -74,28 +79,34 @@ export default function BrowseTournamentsPage() {
           </div>
         ) : (
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {tournaments.map((tournament) => (
-              <Card key={tournament.id} className="flex flex-col">
-                <CardHeader>
-                  <CardTitle className="font-headline">{tournament.name}</CardTitle>
-                  <CardDescription>{tournament.game} on {tournament.platform}</CardDescription>
-                </CardHeader>
-                <CardContent className="flex-grow">
-                  <p className="text-sm text-muted-foreground line-clamp-3">{tournament.description}</p>
-                   <div className="text-sm text-muted-foreground mt-4">
-                    {format(new Date(tournament.startDate as string), 'PPP')} - {format(new Date(tournament.endDate as string), 'PPP')}
-                  </div>
-                </CardContent>
-                <CardFooter>
-                  <Link href={`/tournaments/${tournament.id}`} className="w-full">
-                    <Button variant="outline" className="w-full">
-                      View Details
-                      <ArrowRight className="ml-2 h-4 w-4" />
-                    </Button>
-                  </Link>
-                </CardFooter>
-              </Card>
-            ))}
+            {tournaments.map((tournament) => {
+                const startDate = safeToDate(tournament.startDate);
+                const endDate = safeToDate(tournament.endDate);
+                return (
+                <Card key={tournament.id} className="flex flex-col">
+                    <CardHeader>
+                    <CardTitle className="font-headline">{tournament.name}</CardTitle>
+                    <CardDescription>{tournament.game} on {tournament.platform}</CardDescription>
+                    </CardHeader>
+                    <CardContent className="flex-grow">
+                    <p className="text-sm text-muted-foreground line-clamp-3">{tournament.description}</p>
+                    {startDate && endDate && (
+                        <div className="text-sm text-muted-foreground mt-4">
+                            {format(startDate, 'PPP')} - {format(endDate, 'PPP')}
+                        </div>
+                    )}
+                    </CardContent>
+                    <CardFooter>
+                    <Link href={`/tournaments/${tournament.id}`} className="w-full">
+                        <Button variant="outline" className="w-full">
+                        View Details
+                        <ArrowRight className="ml-2 h-4 w-4" />
+                        </Button>
+                    </Link>
+                    </CardFooter>
+                </Card>
+                );
+            })}
           </div>
         )}
       </div>

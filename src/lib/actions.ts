@@ -2,8 +2,9 @@
 
 import { adminDb } from './firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
-import type { Tournament, UserProfile, Team, Match, Standing } from './types';
+import type { Tournament, UserProfile, Team, Match, Standing, TournamentFormat } from './types';
 import { calculateTournamentStandings } from '@/ai/flows/calculate-tournament-standings';
+import { generateTournamentFixtures } from '@/ai/flows/generate-tournament-fixtures';
 
 // USER PROFILE ACTIONS
 export async function updateUserProfile(uid: string, data: Partial<UserProfile>) {
@@ -12,10 +13,11 @@ export async function updateUserProfile(uid: string, data: Partial<UserProfile>)
 }
 
 // TOURNAMENT ACTIONS
-export async function createTournament(data: Omit<Tournament, 'id' | 'createdAt'> & { organizerId: string }) {
+export async function createTournament(data: Omit<Tournament, 'id' | 'createdAt' | 'status'> & { organizerId: string }) {
   const { ...rest } = data;
   const docRef = await adminDb.collection('tournaments').add({
     ...rest,
+    status: 'open_for_registration',
     createdAt: FieldValue.serverTimestamp(),
   });
   return docRef.id;
@@ -27,13 +29,54 @@ export async function addTeam(tournamentId: string, teamData: Omit<Team, 'id' | 
 }
 
 // MATCH ACTIONS
-export async function createMatch(data: { tournamentId: string, homeTeamId: string, awayTeamId: string, matchDate: Date }) {
-    await adminDb.collection(`tournaments/${data.tournamentId}/matches`).add({
-        ...data,
+export async function generateFixtures(tournamentId: string) {
+  const tournamentRef = adminDb.collection('tournaments').doc(tournamentId);
+  const tournamentDoc = await tournamentRef.get();
+  if (!tournamentDoc.exists) throw new Error("Tournament not found");
+
+  const tournament = tournamentDoc.data() as Tournament;
+  if (tournament.status !== 'open_for_registration') {
+    throw new Error("Fixtures can only be generated for tournaments that are open for registration.");
+  }
+  
+  await tournamentRef.update({ status: 'generating_fixtures' });
+
+  try {
+    const teamsQuery = await adminDb.collection(`tournaments/${tournamentId}/teams`).get();
+    const teamIds = teamsQuery.docs.map(doc => doc.id);
+  
+    if (teamIds.length < 4) {
+      throw new Error("At least 4 teams are required to generate fixtures.");
+    }
+  
+    const fixtures = await generateTournamentFixtures({
+      teamIds,
+      format: tournament.format
+    });
+  
+    const batch = adminDb.batch();
+    const matchesCollection = adminDb.collection(`tournaments/${tournamentId}/matches`);
+  
+    fixtures.forEach(fixture => {
+      const matchRef = matchesCollection.doc();
+      batch.set(matchRef, {
+        ...fixture,
+        tournamentId,
         homeScore: null,
         awayScore: null,
         status: 'scheduled',
+        matchDate: tournament.startDate, // Default to tournament start date, can be edited later
+      });
     });
+  
+    await batch.commit();
+    await tournamentRef.update({ status: 'in_progress' });
+
+  } catch(error) {
+    // If anything fails, revert the status
+    await tournamentRef.update({ status: 'open_for_registration' });
+    throw error; // Re-throw the error to be caught by the client
+  }
 }
 
 // STANDINGS ACTIONS

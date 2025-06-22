@@ -16,22 +16,42 @@ export function StandingsTab({ tournamentId }: { tournamentId: string }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const standingsQuery = query(collection(db, "standings"), where("tournamentId", "==", tournamentId), orderBy("ranking", "asc"));
-    const teamsQuery = query(collection(db, `tournaments/${tournamentId}/teams`));
+    let active = true;
+    let teamsLoaded = false;
+    let standingsLoaded = false;
 
+    const checkDone = () => {
+        if (active && teamsLoaded && standingsLoaded) {
+            setLoading(false);
+        }
+    }
+
+    const standingsQuery = query(collection(db, "standings"), where("tournamentId", "==", tournamentId), orderBy("ranking", "asc"));
     const unsubStandings = onSnapshot(standingsQuery, (snapshot) => {
-      const standingsData = snapshot.docs.map(doc => doc.data() as Standing);
-      setStandings(standingsData);
-      if(teams.length > 0 || snapshot.docs.length === 0) setLoading(false);
+        if (!active) return;
+        const standingsData = snapshot.docs.map(doc => doc.data() as Standing);
+        setStandings(standingsData);
+        standingsLoaded = true;
+        checkDone();
+    }, () => {
+        standingsLoaded = true;
+        checkDone();
     });
     
+    const teamsQuery = query(collection(db, `tournaments/${tournamentId}/teams`));
     const unsubTeams = onSnapshot(teamsQuery, (snapshot) => {
+        if (!active) return;
         const teamsData = snapshot.docs.map(doc => ({id: doc.id, ...doc.data()}) as Team);
         setTeams(teamsData);
-        if(standings.length > 0 || snapshot.docs.length === 0) setLoading(false);
+        teamsLoaded = true;
+        checkDone();
+    }, () => {
+        teamsLoaded = true;
+        checkDone();
     });
 
     return () => {
+        active = false;
         unsubStandings();
         unsubTeams();
     };
@@ -72,6 +92,7 @@ export function StandingsTab({ tournamentId }: { tournamentId: string }) {
             <TableBody>
               {standings.map(standing => {
                 const teamInfo = getTeamInfo(standing.teamId);
+                const goalDifference = standing.goalsFor - standing.goalsAgainst;
                 return (
                   <TableRow key={standing.teamId}>
                     <TableCell className="font-bold text-lg">{standing.ranking}</TableCell>
@@ -89,7 +110,7 @@ export function StandingsTab({ tournamentId }: { tournamentId: string }) {
                     <TableCell className="text-center">{standing.losses}</TableCell>
                     <TableCell className="text-center">{standing.goalsFor}</TableCell>
                     <TableCell className="text-center">{standing.goalsAgainst}</TableCell>
-                    <TableCell className="text-center">{standing.goalsFor - standing.goalsAgainst}</TableCell>
+                    <TableCell className="text-center">{goalDifference > 0 ? `+${goalDifference}`: goalDifference}</TableCell>
                     <TableCell className="text-center font-bold">{standing.points}</TableCell>
                   </TableRow>
                 );

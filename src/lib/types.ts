@@ -10,6 +10,9 @@ export interface UserProfile {
   pcId?: string;
 }
 
+export type TournamentFormat = 'league' | 'cup' | 'champions-league';
+export type TournamentStatus = 'open_for_registration' | 'generating_fixtures' | 'in_progress' | 'completed';
+
 export interface Tournament {
   id: string;
   name: string;
@@ -22,6 +25,8 @@ export interface Tournament {
   rules: string;
   organizerId: string;
   createdAt?: Timestamp;
+  format: TournamentFormat;
+  status: TournamentStatus;
 }
 
 export interface Team {
@@ -45,6 +50,7 @@ export interface Match {
   matchDate: Date | Timestamp;
   status: 'scheduled' | 'pending_approval' | 'approved' | 'disputed';
   evidenceUrl?: string;
+  round?: string;
 }
 
 export interface Standing {
