@@ -5,7 +5,6 @@ import * as React from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { useRouter } from 'next/navigation';
 
 import { cn } from '@/lib/utils';
 import { Button, buttonVariants } from '@/components/ui/button';
@@ -27,7 +26,6 @@ const formSchema = z.object({
 type UserFormValue = z.infer<typeof formSchema>;
 
 export function UserAuthForm({ className, mode, ...props }: UserAuthFormProps) {
-  const router = useRouter();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = React.useState<boolean>(false);
   const [isGoogleLoading, setIsGoogleLoading] = React.useState<boolean>(false);
@@ -44,8 +42,8 @@ export function UserAuthForm({ className, mode, ...props }: UserAuthFormProps) {
       } else {
         await handleSignUp(data.email, data.password);
       }
-      router.push('/dashboard');
-      toast({ title: mode === 'login' ? 'Login successful!' : 'Account created!', description: "You're now logged in." });
+      // The redirect is now handled by the AuthLayout
+      toast({ title: mode === 'login' ? 'Login successful!' : 'Account created!', description: "Redirecting to your dashboard..." });
     } catch (error: any) {
       let message = 'An unknown error occurred.';
       const code = error.code;
@@ -69,8 +67,7 @@ export function UserAuthForm({ className, mode, ...props }: UserAuthFormProps) {
         title: 'Authentication Error',
         description: message,
       });
-    }
-     finally {
+      // Only set loading to false on error, so the user can try again
       setIsLoading(false);
     }
   };
@@ -79,15 +76,15 @@ export function UserAuthForm({ className, mode, ...props }: UserAuthFormProps) {
     setIsGoogleLoading(true);
     try {
       await handleGoogleSignIn();
-      router.push('/dashboard');
-      toast({ title: 'Login successful!', description: "You're now logged in with Google." });
+      // The redirect is now handled by the AuthLayout
+      toast({ title: 'Login successful!', description: "Redirecting to your dashboard..." });
     } catch (error: any) {
        toast({
         variant: 'destructive',
         title: 'Google Sign-In Error',
         description: error.message || 'Could not sign in with Google. Please try again.',
       });
-    } finally {
+      // Only set loading to false on error, so the user can try again
       setIsGoogleLoading(false);
     }
   }
