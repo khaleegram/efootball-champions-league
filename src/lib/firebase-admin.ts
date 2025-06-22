@@ -1,29 +1,44 @@
 import admin from 'firebase-admin';
+import type { App } from 'firebase-admin/app';
+import type { Auth } from 'firebase-admin/auth';
+import type { Firestore } from 'firebase-admin/firestore';
 
-// This file is for server-side code only.
+let adminApp: App | undefined;
 
-// Ensure the service account key is available
-if (!process.env.FIREBASE_SERVICE_ACCOUNT_KEY) {
-  throw new Error('FIREBASE_SERVICE_ACCOUNT_KEY is not set in the environment variables.');
-}
+function ensureAdminInitialized(): void {
+  if (admin.apps.length > 0 && admin.apps[0]) {
+    adminApp = admin.apps[0];
+    return;
+  }
+  
+  if (!process.env.FIREBASE_SERVICE_ACCOUNT_KEY) {
+    throw new Error('CRITICAL: FIREBASE_SERVICE_ACCOUNT_KEY is not set in the environment variables. Server-side features like creating tournaments will not work. Please go to your Firebase project settings, generate a new private key, and add it to your .env file.');
+  }
 
-// Initialize Firebase Admin SDK if not already initialized
-if (!admin.apps.length) {
   try {
-    const serviceAccount = JSON.parse(
-      process.env.FIREBASE_SERVICE_ACCOUNT_KEY
-    );
-    admin.initializeApp({
+    const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY);
+    adminApp = admin.initializeApp({
       credential: admin.credential.cert(serviceAccount),
       projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
     });
   } catch (error: any) {
     console.error('Firebase admin initialization error:', error.stack);
-    throw new Error('Could not initialize Firebase Admin SDK. Please check your service account credentials in .env');
+    throw new Error('Could not initialize Firebase Admin SDK. Your FIREBASE_SERVICE_ACCOUNT_KEY in the .env file might be a malformed JSON string.');
   }
 }
 
-const adminDb = admin.firestore();
-const adminAuth = admin.auth();
+function getAdminDb(): Firestore {
+  if (!adminApp) {
+    ensureAdminInitialized();
+  }
+  return admin.firestore(adminApp);
+}
 
-export { admin, adminDb, adminAuth };
+function getAdminAuth(): Auth {
+  if (!adminApp) {
+    ensureAdminInitialized();
+  }
+  return admin.auth(adminApp);
+}
+
+export { getAdminDb, getAdminAuth };

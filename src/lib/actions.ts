@@ -1,6 +1,6 @@
 'use server';
 
-import { adminDb } from './firebase-admin';
+import { getAdminDb } from './firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
 import type { Tournament, UserProfile, Team, Match, Standing, TournamentFormat } from './types';
 import { calculateTournamentStandings } from '@/ai/flows/calculate-tournament-standings';
@@ -8,6 +8,7 @@ import { generateTournamentFixtures } from '@/ai/flows/generate-tournament-fixtu
 
 // USER PROFILE ACTIONS
 export async function updateUserProfile(uid: string, data: Partial<UserProfile>) {
+  const adminDb = getAdminDb();
   try {
     const userRef = adminDb.collection('users').doc(uid);
     await userRef.set(data, { merge: true });
@@ -19,6 +20,7 @@ export async function updateUserProfile(uid: string, data: Partial<UserProfile>)
 
 // TOURNAMENT ACTIONS
 export async function createTournament(data: Omit<Tournament, 'id' | 'createdAt' | 'status'> & { organizerId: string }) {
+  const adminDb = getAdminDb();
   try {
     const { ...rest } = data;
     const docRef = await adminDb.collection('tournaments').add({
@@ -38,6 +40,7 @@ export async function createTournament(data: Omit<Tournament, 'id' | 'createdAt'
 
 // TEAM ACTIONS
 export async function addTeam(tournamentId: string, teamData: Omit<Team, 'id' | 'tournamentId'>) {
+    const adminDb = getAdminDb();
     try {
       await adminDb.collection(`tournaments/${tournamentId}/teams`).add(teamData);
     } catch (error: any) {
@@ -48,6 +51,7 @@ export async function addTeam(tournamentId: string, teamData: Omit<Team, 'id' | 
 
 // MATCH ACTIONS
 export async function generateFixtures(tournamentId: string) {
+  const adminDb = getAdminDb();
   const tournamentRef = adminDb.collection('tournaments').doc(tournamentId);
   const tournamentDoc = await tournamentRef.get();
   if (!tournamentDoc.exists) throw new Error("Tournament not found");
@@ -100,6 +104,7 @@ export async function generateFixtures(tournamentId: string) {
 
 // STANDINGS ACTIONS
 export async function approveMatchResult(matchId: string, tournamentId: string) {
+  const adminDb = getAdminDb();
   try {
     // 1. Update match status
     const matchRef = adminDb.collection(`tournaments/${tournamentId}/matches`).doc(matchId);
