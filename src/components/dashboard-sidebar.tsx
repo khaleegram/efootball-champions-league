@@ -31,13 +31,8 @@ export function DashboardSidebar() {
 
   const onSignOut = async () => {
     try {
-      // 1. Sign out from the Firebase client SDK.
       await signOut(auth);
-      
-      // 2. Call the API route to clear the server-side session cookie.
       await fetch('/api/auth/session', { method: 'DELETE' });
-
-      // 3. Redirect to home page.
       router.push('/');
     } catch (error) {
       console.error("Sign out failed:", error);
@@ -62,7 +57,7 @@ export function DashboardSidebar() {
             {menuItems.map((item) => (
                 <SidebarMenuItem key={item.href}>
                     <Link href={item.href} legacyBehavior passHref>
-                        <SidebarMenuButton isActive={pathname === item.href}>
+                        <SidebarMenuButton isActive={pathname === item.href} className="font-medium">
                             <item.icon />
                             <span>{item.label}</span>
                         </SidebarMenuButton>

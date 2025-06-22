@@ -76,7 +76,7 @@ export default function CreateTournamentPage() {
   }
 
   return (
-    <Card>
+    <Card className="bg-card/50">
       <CardHeader>
         <CardTitle className="font-headline text-3xl">Create a New Tournament</CardTitle>
         <CardDescription>Fill out the details below to set up your next eFootball competition.</CardDescription>
@@ -222,7 +222,7 @@ export default function CreateTournamentPage() {
                 </FormItem>
               )}
             />
-            <Button type="submit" disabled={isLoading}>
+            <Button type="submit" disabled={isLoading} className="shadow-lg shadow-primary/20">
               {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Create Tournament
             </Button>
