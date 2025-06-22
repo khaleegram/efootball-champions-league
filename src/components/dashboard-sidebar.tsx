@@ -55,12 +55,12 @@ export function DashboardSidebar() {
             <SidebarMenu>
             {menuItems.map((item) => (
                 <SidebarMenuItem key={item.href}>
-                    <Link href={item.href} legacyBehavior passHref>
-                        <SidebarMenuButton isActive={pathname === item.href} className="font-medium">
-                            <item.icon />
-                            <span>{item.label}</span>
-                        </SidebarMenuButton>
-                    </Link>
+                    <SidebarMenuButton asChild isActive={pathname === item.href} className="font-medium">
+                      <Link href={item.href}>
+                          <item.icon />
+                          <span>{item.label}</span>
+                      </Link>
+                    </SidebarMenuButton>
                 </SidebarMenuItem>
             ))}
             </SidebarMenu>
