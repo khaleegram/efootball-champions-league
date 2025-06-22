@@ -1,6 +1,6 @@
 'use server';
 
-import { getAdminDb } from './firebase-admin';
+import { getAdminDb, admin } from './firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
 import type { Tournament, UserProfile, Team, Match, Standing, TournamentFormat } from './types';
 import { calculateTournamentStandings } from '@/ai/flows/calculate-tournament-standings';
@@ -22,9 +22,11 @@ export async function updateUserProfile(uid: string, data: Partial<UserProfile>)
 export async function createTournament(data: Omit<Tournament, 'id' | 'createdAt' | 'status'> & { organizerId: string }) {
   const adminDb = getAdminDb();
   try {
-    const { ...rest } = data;
+    const { startDate, endDate, ...rest } = data;
     const docRef = await adminDb.collection('tournaments').add({
       ...rest,
+      startDate: admin.firestore.Timestamp.fromDate(new Date(startDate as any)),
+      endDate: admin.firestore.Timestamp.fromDate(new Date(endDate as any)),
       status: 'open_for_registration',
       createdAt: FieldValue.serverTimestamp(),
     });
@@ -34,7 +36,7 @@ export async function createTournament(data: Omit<Tournament, 'id' | 'createdAt'
     if (error.message && error.message.includes("Cloud Firestore API has not been used")) {
          throw new Error("Firestore is not enabled for this project. Please go to the Firebase Console to create a Firestore database.");
     }
-    throw new Error("A server error occurred while creating the tournament.");
+    throw new Error(`A server error occurred while creating the tournament. Reason: ${error.message}`);
   }
 }
 

@@ -18,14 +18,17 @@ function ensureAdminInitialized(): void {
   }
 
   try {
-    const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY);
+    // The single quotes are part of the value in the .env file, so we need to remove them before parsing.
+    const serviceAccountString = process.env.FIREBASE_SERVICE_ACCOUNT_KEY.replace(/^'|'$/g, '');
+    const serviceAccount = JSON.parse(serviceAccountString);
+    
     adminApp = admin.initializeApp({
       credential: admin.credential.cert(serviceAccount),
       projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
     });
   } catch (error: any) {
     console.error('Firebase admin initialization error:', error.stack);
-    throw new Error('Could not initialize Firebase Admin SDK. Your FIREBASE_SERVICE_ACCOUNT_KEY in the .env file might be a malformed JSON string. Please ensure it is a single line enclosed in single quotes, like `\'{"key": "value" ...}\'`.');
+    throw new Error("Could not initialize Firebase Admin SDK. Your FIREBASE_SERVICE_ACCOUNT_KEY in the .env file might be a malformed JSON string. Please ensure it is a single line enclosed in single quotes, like `FIREBASE_SERVICE_ACCOUNT_KEY='{\"key\": \"value\" ...}'`.");
   }
 }
 
@@ -39,4 +42,4 @@ function getAdminAuth(): Auth {
   return admin.auth(adminApp);
 }
 
-export { getAdminDb, getAdminAuth };
+export { getAdminDb, getAdminAuth, admin };
