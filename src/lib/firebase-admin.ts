@@ -1,3 +1,5 @@
+'use server';
+
 import admin from 'firebase-admin';
 import type { App } from 'firebase-admin/app';
 import type { Auth } from 'firebase-admin/auth';
@@ -16,13 +18,13 @@ function ensureAdminInitialized(): void {
   }
 
   try {
-    // The single quotes are part of the value in the .env file, so we need to remove them before parsing.
     const serviceAccountString = process.env.FIREBASE_SERVICE_ACCOUNT_KEY.replace(/^'|'$/g, '');
     const serviceAccount = JSON.parse(serviceAccountString);
     
+    // Let Firebase Admin infer the project ID from the credential itself.
+    // This is more robust and avoids potential mismatches with other environment variables.
     adminApp = admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount),
-      projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+      credential: admin.credential.cert(serviceAccount)
     });
   } catch (error: any) {
     console.error('Firebase admin initialization error:', error.stack);
