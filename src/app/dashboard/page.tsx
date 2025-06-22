@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useState } from 'react';
@@ -18,17 +19,33 @@ export default function MyTournamentsPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user) {
+        // This case is handled by the layout, but as a safeguard:
+        setLoading(false);
+        return;
+    };
 
     setLoading(true);
     const q = query(collection(db, 'tournaments'), where('organizerId', '==', user.uid));
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
       const userTournaments: Tournament[] = [];
       querySnapshot.forEach((doc) => {
-        userTournaments.push({ id: doc.id, ...doc.data() } as Tournament);
+        // Need to handle Timestamp conversion safely
+        const data = doc.data();
+        const tournamentData = { 
+            id: doc.id, 
+            ...data,
+            // Ensure Timestamps are converted to Date objects for formatting
+            startDate: data.startDate?.toDate ? data.startDate.toDate() : new Date(data.startDate),
+            endDate: data.endDate?.toDate ? data.endDate.toDate() : new Date(data.endDate),
+        } as Tournament;
+        userTournaments.push(tournamentData);
       });
       setTournaments(userTournaments);
       setLoading(false);
+    }, (error) => {
+        console.error("Error fetching tournaments:", error);
+        setLoading(false);
     });
 
     return () => unsubscribe();
@@ -73,7 +90,7 @@ export default function MyTournamentsPage() {
               <CardContent className="flex-grow">
                 <p className="text-sm text-muted-foreground line-clamp-3">{tournament.description}</p>
                 <div className="text-sm text-muted-foreground mt-4">
-                  {format(tournament.startDate.toDate(), 'PPP')} - {format(tournament.endDate.toDate(), 'PPP')}
+                  {format(tournament.startDate as Date, 'PPP')} - {format(tournament.endDate as Date, 'PPP')}
                 </div>
               </CardContent>
               <CardFooter>
