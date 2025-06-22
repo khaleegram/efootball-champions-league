@@ -1,37 +1,10 @@
-
-"use client";
-
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { useAuth } from '@/hooks/use-auth';
-import { Loader2 } from 'lucide-react';
-
+// This component is now a simple, pass-through server component.
+// The middleware handles redirecting authenticated users away from this layout.
 export default function AuthLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
-  const { user, loading } = useAuth();
-  const router = useRouter();
-
-  useEffect(() => {
-    // If auth is resolved and a user exists, they shouldn't be on the auth pages.
-    if (!loading && user) {
-      router.replace('/dashboard');
-    }
-  }, [user, loading, router]);
-
-  // Show a loader while we're checking for a user or about to redirect.
-  // This prevents the login form from flashing if the user is already logged in.
-  if (loading || user) {
-    return (
-      <div className="flex h-screen w-full items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
-  
-  // If auth is resolved and there's no user, show the login/signup form.
   return (
     <div className="container relative flex h-[calc(100vh-3.5rem)] flex-col items-center justify-center md:grid lg:max-w-none lg:grid-cols-2 lg:px-0">
         <div className="relative hidden h-full flex-col bg-muted p-10 text-white dark:border-r lg:flex">

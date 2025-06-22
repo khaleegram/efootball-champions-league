@@ -1,12 +1,10 @@
 "use client"
 
 import Link from "next/link"
-import { usePathname } from "next/navigation"
-import { Trophy, PlusCircle, UserCircle, LogOut, PanelLeft } from "lucide-react"
+import { usePathname, useRouter } from "next/navigation"
+import { Trophy, PlusCircle, UserCircle, LogOut } from "lucide-react"
 
-import { cn } from "@/lib/utils"
 import { useAuth } from "@/hooks/use-auth"
-import { handleSignOut } from "@/lib/actions"
 import { Button } from "@/components/ui/button"
 import {
   Sidebar,
@@ -17,6 +15,8 @@ import {
   SidebarMenuButton,
   SidebarFooter,
 } from "@/components/ui/sidebar"
+import { signOut } from "firebase/auth"
+import { auth } from "@/lib/firebase"
 
 const menuItems = [
   { href: "/dashboard", label: "My Tournaments", icon: Trophy },
@@ -26,7 +26,18 @@ const menuItems = [
 
 export function DashboardSidebar() {
   const pathname = usePathname()
+  const router = useRouter();
   const { user } = useAuth()
+
+  const onSignOut = async () => {
+    try {
+      await signOut(auth);
+      await fetch('/api/auth/session', { method: 'DELETE' });
+      router.push('/');
+    } catch (error) {
+      console.error("Sign out failed:", error);
+    }
+  };
   
   if (!user) return null
 
@@ -56,7 +67,7 @@ export function DashboardSidebar() {
             </SidebarMenu>
         </SidebarContent>
         <SidebarFooter>
-            <Button variant="ghost" className="w-full justify-start gap-2" onClick={() => handleSignOut()}>
+            <Button variant="ghost" className="w-full justify-start gap-2" onClick={onSignOut}>
                 <LogOut className="size-4" />
                 <span>Logout</span>
             </Button>

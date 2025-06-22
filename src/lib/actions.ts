@@ -1,51 +1,13 @@
 "use server";
 
-import {
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
-  signInWithPopup,
-  signOut,
-} from 'firebase/auth';
-import { auth, db, googleAuthProvider } from './firebase';
+import { auth, db } from './firebase';
 import { doc, setDoc, addDoc, collection, serverTimestamp, getDocs, query, where, updateDoc, writeBatch } from 'firebase/firestore';
-import type { Tournament, UserProfile, Team, Match, Standing } from './types';
+import type { Tournament, UserProfile, Team, Match } from './types';
 import { calculateTournamentStandings } from '@/ai/flows/calculate-tournament-standings';
 
-// Auth Actions
-export async function handleSignUp(email: string, password: string) {
-  const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-  const user = userCredential.user;
-  // Create a user profile document in Firestore
-  await setDoc(doc(db, 'users', user.uid), {
-    uid: user.uid,
-    email: user.email,
-    username: user.email?.split('@')[0] || `user_${Date.now()}`,
-  });
-  return JSON.stringify(user);
-}
-
-export async function handleSignIn(email: string, password: string) {
-  const userCredential = await signInWithEmailAndPassword(auth, email, password);
-  return JSON.stringify(userCredential.user);
-}
-
-export async function handleGoogleSignIn() {
-    const result = await signInWithPopup(auth, googleAuthProvider);
-    const user = result.user;
-    
-    // Create user profile if it doesn't exist
-    await setDoc(doc(db, "users", user.uid), {
-        uid: user.uid,
-        email: user.email,
-        username: user.displayName || user.email?.split('@')[0],
-    }, { merge: true });
-
-    return JSON.stringify(user);
-}
-
-export async function handleSignOut() {
-  await signOut(auth);
-}
+// Auth Actions are now handled on the client-side form to interact with the session API route.
+// The handleSignOut logic has been moved to the client components (Header, DashboardSidebar)
+// to properly handle router push after clearing the server session.
 
 // User Profile Actions
 export async function updateUserProfile(uid: string, data: Partial<UserProfile>) {

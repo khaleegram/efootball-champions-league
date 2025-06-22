@@ -3,7 +3,8 @@
 import Link from 'next/link';
 import { Button } from './ui/button';
 import { useAuth } from '@/hooks/use-auth';
-import { handleSignOut } from '@/lib/actions';
+import { auth } from '@/lib/firebase';
+import { signOut } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
 import { Trophy, LogOut, UserCircle, LayoutDashboard } from 'lucide-react';
 import { Skeleton } from './ui/skeleton';
@@ -22,8 +23,16 @@ export function Header() {
   const router = useRouter();
 
   const onSignOut = async () => {
-    await handleSignOut();
-    router.push('/');
+    try {
+      // Sign out from the client-side Firebase instance
+      await signOut(auth);
+      // Call the API route to clear the server-side session cookie
+      await fetch('/api/auth/session', { method: 'DELETE' });
+      // Redirect to home or login page
+      router.push('/');
+    } catch (error) {
+      console.error("Sign out failed:", error);
+    }
   };
 
   const getInitials = (email?: string | null) => {

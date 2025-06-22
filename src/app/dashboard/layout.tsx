@@ -1,39 +1,46 @@
-
-"use client";
-
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { useAuth } from '@/hooks/use-auth';
-import { Loader2 } from 'lucide-react';
+import { cookies } from 'next/headers';
+import { redirect } from 'next/navigation';
+import { adminAuth } from '@/lib/firebase-admin';
 import { DashboardSidebar } from '@/components/dashboard-sidebar';
 import { SidebarProvider } from '@/components/ui/sidebar';
 
-export default function DashboardLayout({
+async function verifySession() {
+  const sessionCookie = cookies().get('session')?.value;
+
+  if (!sessionCookie) {
+    return null;
+  }
+  
+  if (!adminAuth) {
+    console.error("Firebase Admin not initialized, cannot verify session.");
+    // This might be a temporary state during hot-reload, but it's a critical failure.
+    // In a production scenario, you might want to handle this more gracefully.
+    return null;
+  }
+
+  try {
+    // Verify the session cookie.
+    const decodedIdToken = await adminAuth.verifySessionCookie(sessionCookie, true);
+    return decodedIdToken;
+  } catch (error) {
+    console.error('Invalid session cookie found, clearing it.', error);
+    // Session cookie is invalid, clear it.
+    cookies().delete('session');
+    return null;
+  }
+}
+
+export default async function DashboardLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
-  const { user, loading } = useAuth();
-  const router = useRouter();
+  const decodedToken = await verifySession();
 
-  useEffect(() => {
-    // If auth check is done and there's no user, they can't be here.
-    if (!loading && !user) {
-      router.replace('/login');
-    }
-  }, [user, loading, router]);
-
-  // While checking auth, or if there's no user (and we're about to redirect), show a loader.
-  // This prevents content from flashing before the auth check is complete and the redirect happens.
-  if (loading || !user) {
-    return (
-      <div className="flex h-screen w-full items-center justify-center bg-background">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
+  if (!decodedToken) {
+    redirect('/login');
   }
 
-  // If we have a user, render the full dashboard layout.
   return (
     <SidebarProvider>
         <div className="flex min-h-screen bg-muted/20">
