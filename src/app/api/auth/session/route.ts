@@ -1,7 +1,13 @@
-import { adminAuth } from '@/lib/firebase-admin';
 import { cookies } from 'next/headers';
 import { type NextRequest, NextResponse } from 'next/server';
+import { adminAuth } from '@/lib/firebase-admin';
 
+// This route is responsible for creating and deleting the server-side session cookie.
+
+/**
+ * POST handler to create a session cookie.
+ * The client-side will call this after a successful Firebase login.
+ */
 export async function POST(request: NextRequest) {
   const { idToken } = await request.json();
 
@@ -9,22 +15,21 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ message: 'ID token is required.' }, { status: 400 });
   }
 
-  if (!adminAuth) {
-    return NextResponse.json({ message: 'Firebase Admin not initialized.' }, { status: 500 });
-  }
-
-  // 5 days
+  // Session expires in 5 days.
   const expiresIn = 60 * 60 * 24 * 5 * 1000;
 
   try {
     const sessionCookie = await adminAuth.createSessionCookie(idToken, { expiresIn });
-    cookies().set('session', sessionCookie, { 
+    
+    // Set the cookie on the response.
+    cookies().set('session', sessionCookie, {
       maxAge: expiresIn,
-      httpOnly: true, 
+      httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       path: '/',
       sameSite: 'lax',
     });
+
     return NextResponse.json({ status: 'success' });
   } catch (error) {
     console.error('Error creating session cookie:', error);
@@ -32,9 +37,20 @@ export async function POST(request: NextRequest) {
   }
 }
 
+/**
+ * DELETE handler to clear the session cookie.
+ * The client-side will call this on logout.
+ */
 export async function DELETE(request: NextRequest) {
     try {
-        cookies().delete('session');
+        // Clear the 'session' cookie.
+        cookies().set('session', '', {
+            maxAge: 0,
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            path: '/',
+            sameSite: 'lax',
+        });
         return NextResponse.json({ status: 'success' });
     } catch (error) {
         console.error('Error deleting session cookie:', error);

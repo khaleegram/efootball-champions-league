@@ -1,40 +1,40 @@
+
 "use server";
 
-import { auth, db } from './firebase';
-import { doc, setDoc, addDoc, collection, serverTimestamp, getDocs, query, where, updateDoc, writeBatch } from 'firebase/firestore';
+import { adminDb } from './firebase-admin';
+import { FieldValue } from 'firebase-admin/firestore';
 import type { Tournament, UserProfile, Team, Match } from './types';
 import { calculateTournamentStandings } from '@/ai/flows/calculate-tournament-standings';
 
-// Auth Actions are now handled on the client-side form to interact with the session API route.
-// The handleSignOut logic has been moved to the client components (Header, DashboardSidebar)
-// to properly handle router push after clearing the server session.
+// This file contains server-side actions that interact with Firestore.
+// All functions now correctly use the Firebase Admin SDK.
 
-// User Profile Actions
+// USER PROFILE ACTIONS
 export async function updateUserProfile(uid: string, data: Partial<UserProfile>) {
-  const userRef = doc(db, 'users', uid);
-  await setDoc(userRef, data, { merge: true });
+  const userRef = adminDb.collection('users').doc(uid);
+  await userRef.set(data, { merge: true });
 }
 
-// Tournament Actions
+// TOURNAMENT ACTIONS
 export async function createTournament(data: Omit<Tournament, 'id' | 'startDate' | 'endDate'> & { dates: { from: Date, to: Date }}) {
   const { dates, ...rest } = data;
-  const docRef = await addDoc(collection(db, 'tournaments'), {
+  const docRef = await adminDb.collection('tournaments').add({
     ...rest,
     startDate: dates.from,
     endDate: dates.to,
-    createdAt: serverTimestamp(),
+    createdAt: FieldValue.serverTimestamp(),
   });
   return docRef.id;
 }
 
-// Team Actions
+// TEAM ACTIONS
 export async function addTeam(tournamentId: string, teamData: Omit<Team, 'id' | 'tournamentId'>) {
-    await addDoc(collection(db, `tournaments/${tournamentId}/teams`), teamData);
+    await adminDb.collection(`tournaments/${tournamentId}/teams`).add(teamData);
 }
 
-// Match Actions
+// MATCH ACTIONS
 export async function createMatch(data: { tournamentId: string, homeTeamId: string, awayTeamId: string, matchDate: Date }) {
-    await addDoc(collection(db, `tournaments/${data.tournamentId}/matches`), {
+    await adminDb.collection(`tournaments/${data.tournamentId}/matches`).add({
         ...data,
         homeScore: null,
         awayScore: null,
@@ -42,16 +42,17 @@ export async function createMatch(data: { tournamentId: string, homeTeamId: stri
     });
 }
 
+// STANDINGS ACTIONS
 export async function approveMatchResult(matchId: string, tournamentId: string) {
   // 1. Update match status
-  const matchRef = doc(db, `tournaments/${tournamentId}/matches`, matchId);
-  await updateDoc(matchRef, { status: 'approved' });
+  const matchRef = adminDb.collection(`tournaments/${tournamentId}/matches`).doc(matchId);
+  await matchRef.update({ status: 'approved' });
 
   // 2. Fetch all approved matches and teams for the tournament
-  const matchesQuery = query(collection(db, `tournaments/${tournamentId}/matches`), where('status', '==', 'approved'));
-  const teamsQuery = query(collection(db, `tournaments/${tournamentId}/teams`));
+  const matchesQuery = adminDb.collection(`tournaments/${tournamentId}/matches`).where('status', '==', 'approved');
+  const teamsQuery = adminDb.collection(`tournaments/${tournamentId}/teams`);
 
-  const [matchesSnapshot, teamsSnapshot] = await Promise.all([getDocs(matchesQuery), getDocs(teamsQuery)]);
+  const [matchesSnapshot, teamsSnapshot] = await Promise.all([matchesQuery.get(), teamsQuery.get()]);
 
   const approvedMatches = matchesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Match[];
   const teams = teamsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -68,8 +69,6 @@ export async function approveMatchResult(matchId: string, tournamentId: string) 
       awayScore: m.awayScore!,
       approved: true,
     })),
-    // For now, we'll let the AI use standard tie-breaker rules.
-    // This can be fetched from tournament settings in the future.
     tieBreakerRules: "Standard football rules: 1. Points, 2. Goal Difference, 3. Goals For. Head-to-head is not required unless specified.",
   };
 
@@ -77,18 +76,18 @@ export async function approveMatchResult(matchId: string, tournamentId: string) 
   const standingsResult = await calculateTournamentStandings(aiInput);
 
   // 5. Update standings in Firestore
-  const batch = writeBatch(db);
-  const standingsCollection = collection(db, 'standings');
+  const batch = adminDb.batch();
+  const standingsCollection = adminDb.collection('standings');
 
   // First, delete old standings for this tournament to prevent duplicates
-  const oldStandingsQuery = query(standingsCollection, where('tournamentId', '==', tournamentId));
-  const oldStandingsSnapshot = await getDocs(oldStandingsQuery);
+  const oldStandingsQuery = standingsCollection.where('tournamentId', '==', tournamentId);
+  const oldStandingsSnapshot = await oldStandingsQuery.get();
   oldStandingsSnapshot.forEach(doc => batch.delete(doc.ref));
 
   // Then, add the new standings
   standingsResult.forEach(standing => {
     const teamName = teams.find(t => t.id === standing.teamId)?.name || 'Unknown Team';
-    const newStandingRef = doc(standingsCollection);
+    const newStandingRef = standingsCollection.doc();
     batch.set(newStandingRef, {
       ...standing,
       tournamentId,

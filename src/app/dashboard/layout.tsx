@@ -4,29 +4,25 @@ import { adminAuth } from '@/lib/firebase-admin';
 import { DashboardSidebar } from '@/components/dashboard-sidebar';
 import { SidebarProvider } from '@/components/ui/sidebar';
 
+// This is a server component that verifies the user's session before rendering the dashboard.
 async function verifySession() {
   const sessionCookie = cookies().get('session')?.value;
 
+  // If there's no session cookie, the middleware should have already redirected.
+  // This is an extra layer of security.
   if (!sessionCookie) {
-    return null;
-  }
-  
-  if (!adminAuth) {
-    console.error("Firebase Admin not initialized, cannot verify session.");
-    // This might be a temporary state during hot-reload, but it's a critical failure.
-    // In a production scenario, you might want to handle this more gracefully.
-    return null;
+    redirect('/login');
   }
 
   try {
-    // Verify the session cookie.
+    // Verify the session cookie with Firebase Admin.
+    // The `true` argument checks for revocation.
     const decodedIdToken = await adminAuth.verifySessionCookie(sessionCookie, true);
     return decodedIdToken;
   } catch (error) {
-    console.error('Invalid session cookie found, clearing it.', error);
-    // Session cookie is invalid, clear it.
-    cookies().delete('session');
-    return null;
+    console.error('Invalid session cookie found, redirecting to login.', error);
+    // If verification fails, the cookie is invalid, so redirect to login.
+    redirect('/login');
   }
 }
 
@@ -35,11 +31,8 @@ export default async function DashboardLayout({
 }: {
   children: React.ReactNode
 }) {
-  const decodedToken = await verifySession();
-
-  if (!decodedToken) {
-    redirect('/login');
-  }
+  // Ensure the user has a valid session before rendering anything in the dashboard.
+  await verifySession();
 
   return (
     <SidebarProvider>

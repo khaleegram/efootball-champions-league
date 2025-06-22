@@ -1,13 +1,13 @@
 "use client";
 
 import Link from 'next/link';
-import { Button } from './ui/button';
-import { useAuth } from '@/hooks/use-auth';
-import { auth } from '@/lib/firebase';
-import { signOut } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
+import { signOut } from 'firebase/auth';
 import { Trophy, LogOut, UserCircle, LayoutDashboard } from 'lucide-react';
+
+import { Button } from './ui/button';
 import { Skeleton } from './ui/skeleton';
+import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -16,7 +16,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
+import { useAuth } from '@/hooks/use-auth';
+import { auth } from '@/lib/firebase';
 
 export function Header() {
   const { user, userProfile, loading } = useAuth();
@@ -24,12 +25,15 @@ export function Header() {
 
   const onSignOut = async () => {
     try {
-      // Sign out from the client-side Firebase instance
+      // 1. Sign out from the Firebase client SDK.
       await signOut(auth);
-      // Call the API route to clear the server-side session cookie
+      
+      // 2. Call the API route to clear the server-side session cookie.
       await fetch('/api/auth/session', { method: 'DELETE' });
-      // Redirect to home or login page
+
+      // 3. Redirect to home page. This ensures the AuthProvider and server state are clean.
       router.push('/');
+
     } catch (error) {
       console.error("Sign out failed:", error);
     }

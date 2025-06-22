@@ -3,6 +3,7 @@
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { Trophy, PlusCircle, UserCircle, LogOut } from "lucide-react"
+import { signOut } from "firebase/auth"
 
 import { useAuth } from "@/hooks/use-auth"
 import { Button } from "@/components/ui/button"
@@ -15,7 +16,6 @@ import {
   SidebarMenuButton,
   SidebarFooter,
 } from "@/components/ui/sidebar"
-import { signOut } from "firebase/auth"
 import { auth } from "@/lib/firebase"
 
 const menuItems = [
@@ -31,8 +31,13 @@ export function DashboardSidebar() {
 
   const onSignOut = async () => {
     try {
+      // 1. Sign out from the Firebase client SDK.
       await signOut(auth);
+      
+      // 2. Call the API route to clear the server-side session cookie.
       await fetch('/api/auth/session', { method: 'DELETE' });
+
+      // 3. Redirect to home page.
       router.push('/');
     } catch (error) {
       console.error("Sign out failed:", error);

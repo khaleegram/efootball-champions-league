@@ -36,16 +36,19 @@ type UserFormValue = z.infer<typeof formSchema>;
 export function UserAuthForm({ className, mode, ...props }: UserAuthFormProps) {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = React.useState<boolean>(false);
-  const [isGoogleLoading, setIsGoogleLoading] = React.useState<boolean>(false);
   const router = useRouter();
 
   const { register, handleSubmit, formState: { errors } } = useForm<UserFormValue>({
     resolver: zodResolver(formSchema),
   });
 
+  // This function is called after a user is successfully authenticated with Firebase (client-side)
   const handleAuthSuccess = async (user: User) => {
     try {
+      // Get the Firebase ID token from the user.
       const idToken = await user.getIdToken();
+      
+      // Send the token to our API route to create a server-side session cookie.
       const response = await fetch('/api/auth/session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -53,12 +56,13 @@ export function UserAuthForm({ className, mode, ...props }: UserAuthFormProps) {
       });
 
       if (response.ok) {
+        // The cookie is set, now we can safely navigate to the dashboard.
         router.push('/dashboard');
-        toast({ title: 'Success!', description: "You're now logged in." });
       } else {
         throw new Error('Failed to create session on the server.');
       }
     } catch (error) {
+      console.error(error);
       toast({
         variant: 'destructive',
         title: 'Session Error',
@@ -75,17 +79,32 @@ export function UserAuthForm({ className, mode, ...props }: UserAuthFormProps) {
         userCredential = await signInWithEmailAndPassword(auth, data.email, data.password);
       } else {
         userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password);
+        // Create a user profile document in Firestore for new users.
         await setDoc(doc(db, 'users', userCredential.user.uid), {
           uid: userCredential.user.uid,
           email: userCredential.user.email,
           username: userCredential.user.email?.split('@')[0] || `user_${Date.now()}`,
         });
       }
+      // After successful Firebase auth, proceed to create the server session.
       await handleAuthSuccess(userCredential.user);
     } catch (error: any) {
-      // ... (error handling logic remains the same)
       let message = 'An unknown error occurred.';
-      // ... (same detailed error handling as before)
+      if (error.code) {
+        switch (error.code) {
+          case 'auth/user-not-found':
+            message = 'No account found with this email address.';
+            break;
+          case 'auth/wrong-password':
+            message = 'Incorrect password. Please try again.';
+            break;
+          case 'auth/email-already-in-use':
+            message = 'This email is already registered. Please login instead.';
+            break;
+          default:
+            message = error.message;
+        }
+      }
       toast({ variant: 'destructive', title: 'Authentication Error', description: message });
     } finally {
       setIsLoading(false);
@@ -93,9 +112,10 @@ export function UserAuthForm({ className, mode, ...props }: UserAuthFormProps) {
   };
 
   const onGoogleSignIn = async () => {
-    setIsGoogleLoading(true);
+    setIsLoading(true);
     try {
       const userCredential = await signInWithPopup(auth, googleAuthProvider);
+      // Create or merge the user profile in Firestore.
       await setDoc(doc(db, "users", userCredential.user.uid), {
           uid: userCredential.user.uid,
           email: userCredential.user.email,
@@ -109,7 +129,7 @@ export function UserAuthForm({ className, mode, ...props }: UserAuthFormProps) {
         description: error.message || 'Could not sign in with Google. Please try again.',
       });
     } finally {
-      setIsGoogleLoading(false);
+      setIsLoading(false);
     }
   };
 
@@ -126,7 +146,7 @@ export function UserAuthForm({ className, mode, ...props }: UserAuthFormProps) {
               autoCapitalize="none"
               autoComplete="email"
               autoCorrect="off"
-              disabled={isLoading || isGoogleLoading}
+              disabled={isLoading}
               {...register('email')}
             />
             {errors?.email && <p className="px-1 text-xs text-destructive">{errors.email.message}</p>}
@@ -140,12 +160,12 @@ export function UserAuthForm({ className, mode, ...props }: UserAuthFormProps) {
               autoCapitalize="none"
               autoComplete={mode === 'login' ? "current-password" : "new-password"}
               autoCorrect="off"
-              disabled={isLoading || isGoogleLoading}
+              disabled={isLoading}
               {...register('password')}
             />
             {errors?.password && <p className="px-1 text-xs text-destructive">{errors.password.message}</p>}
           </div>
-          <Button type="submit" disabled={isLoading || isGoogleLoading}>
+          <Button type="submit" disabled={isLoading}>
             {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             {mode === 'login' ? 'Sign In' : 'Sign Up'} with Email
           </Button>
@@ -155,8 +175,8 @@ export function UserAuthForm({ className, mode, ...props }: UserAuthFormProps) {
         <div className="absolute inset-0 flex items-center"><span className="w-full border-t" /></div>
         <div className="relative flex justify-center text-xs uppercase"><span className="bg-background px-2 text-muted-foreground">Or continue with</span></div>
       </div>
-      <Button variant="outline" type="button" disabled={isLoading || isGoogleLoading} onClick={onGoogleSignIn}>
-        {isGoogleLoading ? (
+      <Button variant="outline" type="button" disabled={isLoading} onClick={onGoogleSignIn}>
+        {isLoading ? (
           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
         ) : (
           <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24"><path fill="currentColor" d="M21.35,11.1H12.18V13.83H18.69C18.36,17.64 15.19,19.27 12.19,19.27C8.36,19.27 5,16.25 5,12C5,7.75 8.36,4.73 12.19,4.73C15.29,4.73 17.1,6.7 17.1,6.7L19,4.72C19,4.72 16.56,2 12.19,2C6.42,2 2.03,6.8 2.03,12C2.03,17.2 6.42,22 12.19,22C17.6,22 21.54,18.33 21.54,12.81C21.54,11.76 21.45,11.43 21.35,11.1Z"></path></svg>

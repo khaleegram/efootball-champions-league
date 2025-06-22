@@ -6,24 +6,25 @@ export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   const isAuthPage = pathname.startsWith('/login') || pathname.startsWith('/signup');
-  
-  const protectedPaths = ['/dashboard', '/profile'];
-  const isProtectedPage = protectedPaths.some(p => pathname.startsWith(p));
+  const isProtectedPage = pathname.startsWith('/dashboard') || pathname.startsWith('/profile');
 
-  // If the user has a session and tries to access an auth page, redirect to the dashboard
+  // If the user has a session and tries to access an auth page (login/signup),
+  // redirect them to the dashboard.
   if (session && isAuthPage) {
     return NextResponse.redirect(new URL('/dashboard', request.url));
   }
 
-  // If the user does not have a session and tries to access a protected page, redirect to login
+  // If the user does not have a session and tries to access a protected page,
+  // redirect them to the login page.
   if (!session && isProtectedPage) {
     return NextResponse.redirect(new URL('/login', request.url));
   }
 
+  // Otherwise, continue to the requested page.
   return NextResponse.next();
 }
 
-// See "Matching Paths" below to learn more
+// Configure the middleware to run on specific paths.
 export const config = {
   matcher: [
     /*
@@ -35,4 +36,4 @@ export const config = {
      */
     '/((?!api|_next/static|_next/image|favicon.ico).*)',
   ],
-}
+};

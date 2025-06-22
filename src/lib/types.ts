@@ -1,4 +1,4 @@
-import { Timestamp } from 'firebase/firestore';
+import type { Timestamp } from 'firebase/firestore';
 
 export interface UserProfile {
   uid: string;
@@ -16,8 +16,8 @@ export interface Tournament {
   description: string;
   game: string;
   platform: string;
-  startDate: Timestamp;
-  endDate: Timestamp;
+  startDate: Timestamp | string; // Allow string for serialized dates
+  endDate: Timestamp | string; // Allow string for serialized dates
   maxTeams: number;
   rules: string;
   organizerId: string;
