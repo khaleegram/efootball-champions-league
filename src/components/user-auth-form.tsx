@@ -1,13 +1,15 @@
+
 // components/user-auth-form.tsx
 "use client";
 
 import * as React from 'react';
+import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 
 import { cn } from '@/lib/utils';
-import { Button, buttonVariants } from '@/components/ui/button';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
@@ -26,6 +28,7 @@ const formSchema = z.object({
 type UserFormValue = z.infer<typeof formSchema>;
 
 export function UserAuthForm({ className, mode, ...props }: UserAuthFormProps) {
+  const router = useRouter();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = React.useState<boolean>(false);
   const [isGoogleLoading, setIsGoogleLoading] = React.useState<boolean>(false);
@@ -42,7 +45,8 @@ export function UserAuthForm({ className, mode, ...props }: UserAuthFormProps) {
       } else {
         await handleSignUp(data.email, data.password);
       }
-      toast({ title: mode === 'login' ? 'Login successful!' : 'Account created!', description: "You will be redirected shortly." });
+      toast({ title: mode === 'login' ? 'Login successful!' : 'Account created!', description: "Redirecting to your dashboard..." });
+      router.push('/dashboard');
     } catch (error: any) {
       let message = 'An unknown error occurred.';
       const code = error.code;
@@ -75,7 +79,8 @@ export function UserAuthForm({ className, mode, ...props }: UserAuthFormProps) {
     setIsGoogleLoading(true);
     try {
       await handleGoogleSignIn();
-      toast({ title: 'Login successful!', description: "You will be redirected shortly." });
+      toast({ title: 'Login successful!', description: "Redirecting to your dashboard..." });
+      router.push('/dashboard');
     } catch (error: any) {
        toast({
         variant: 'destructive',

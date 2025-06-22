@@ -1,3 +1,4 @@
+
 // app/dashboard/layout.tsx
 "use client"
 
@@ -23,8 +24,7 @@ export default function DashboardLayout({
     }
   }, [user, loading, router]);
   
-  // While the auth state is loading, or if there is no user (which means a redirect is imminent),
-  // show a loader. This prevents the dashboard from flashing on the screen for unauthenticated users.
+  // Show a loader while the auth state is loading, or if there is no user (which means a redirect is imminent).
   if (loading || !user) {
     return (
       <div className="flex h-screen w-full items-center justify-center">

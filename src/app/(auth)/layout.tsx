@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect } from 'react';
@@ -14,12 +15,13 @@ export default function AuthLayout({
   const router = useRouter();
 
   useEffect(() => {
+    // If auth is resolved and a user exists, they shouldn't be on the auth pages.
     if (!loading && user) {
       router.replace('/dashboard');
     }
   }, [user, loading, router]);
 
-  // While loading, or if a user exists (which means we're about to redirect), show a loader.
+  // Show a loader while we're checking for a user or about to redirect.
   if (loading || user) {
     return (
       <div className="flex h-screen w-full items-center justify-center">
