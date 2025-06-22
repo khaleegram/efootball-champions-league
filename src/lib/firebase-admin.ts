@@ -1,3 +1,5 @@
+'use server';
+
 import admin from 'firebase-admin';
 import type { App } from 'firebase-admin/app';
 import type { Auth } from 'firebase-admin/auth';
@@ -23,21 +25,17 @@ function ensureAdminInitialized(): void {
     });
   } catch (error: any) {
     console.error('Firebase admin initialization error:', error.stack);
-    throw new Error('Could not initialize Firebase Admin SDK. Your FIREBASE_SERVICE_ACCOUNT_KEY in the .env file might be a malformed JSON string.');
+    throw new Error('Could not initialize Firebase Admin SDK. Your FIREBASE_SERVICE_ACCOUNT_KEY in the .env file might be a malformed JSON string. Please ensure it is a single line enclosed in single quotes, like `\'{"key": "value" ...}\'`.');
   }
 }
 
 function getAdminDb(): Firestore {
-  if (!adminApp) {
-    ensureAdminInitialized();
-  }
+  ensureAdminInitialized();
   return admin.firestore(adminApp);
 }
 
 function getAdminAuth(): Auth {
-  if (!adminApp) {
-    ensureAdminInitialized();
-  }
+  ensureAdminInitialized();
   return admin.auth(adminApp);
 }
 
