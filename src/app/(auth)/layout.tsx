@@ -22,6 +22,7 @@ export default function AuthLayout({
   }, [user, loading, router]);
 
   // Show a loader while we're checking for a user or about to redirect.
+  // This prevents the login form from flashing if the user is already logged in.
   if (loading || user) {
     return (
       <div className="flex h-screen w-full items-center justify-center">

@@ -43,7 +43,9 @@ export function UserAuthForm({ className, mode, ...props }: UserAuthFormProps) {
       } else {
         await handleSignUp(data.email, data.password);
       }
-      toast({ title: mode === 'login' ? 'Login successful!' : 'Account created!', description: 'You will be redirected shortly.' });
+      toast({ title: mode === 'login' ? 'Login successful!' : 'Account created!' });
+      // Force a hard reload to the dashboard to ensure auth state is synced.
+      window.location.assign('/dashboard');
     } catch (error: any) {
       let message = 'An unknown error occurred.';
       const code = error.code;
@@ -76,7 +78,9 @@ export function UserAuthForm({ className, mode, ...props }: UserAuthFormProps) {
     setIsGoogleLoading(true);
     try {
       await handleGoogleSignIn();
-      toast({ title: 'Login successful!', description: 'You will be redirected shortly.' });
+      toast({ title: 'Login successful!' });
+      // Force a hard reload to the dashboard to ensure auth state is synced.
+      window.location.assign('/dashboard');
     } catch (error: any) {
        toast({
         variant: 'destructive',

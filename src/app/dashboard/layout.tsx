@@ -18,14 +18,13 @@ export default function DashboardLayout({
 
   useEffect(() => {
     // If auth check is done and there's no user, they can't be here.
-    // This will run on initial load or if the user signs out.
     if (!loading && !user) {
       router.replace('/login');
     }
   }, [user, loading, router]);
 
   // While checking auth, or if there's no user (and we're about to redirect), show a loader.
-  // This prevents content from flashing before the auth check is complete.
+  // This prevents content from flashing before the auth check is complete and the redirect happens.
   if (loading || !user) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
