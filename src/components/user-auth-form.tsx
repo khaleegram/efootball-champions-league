@@ -5,7 +5,6 @@ import * as React from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { useRouter } from 'next/navigation';
 
 import { cn } from '@/lib/utils';
 import { Button, buttonVariants } from '@/components/ui/button';
@@ -28,7 +27,6 @@ type UserFormValue = z.infer<typeof formSchema>;
 
 export function UserAuthForm({ className, mode, ...props }: UserAuthFormProps) {
   const { toast } = useToast();
-  const router = useRouter();
   const [isLoading, setIsLoading] = React.useState<boolean>(false);
   const [isGoogleLoading, setIsGoogleLoading] = React.useState<boolean>(false);
 
@@ -44,8 +42,7 @@ export function UserAuthForm({ className, mode, ...props }: UserAuthFormProps) {
       } else {
         await handleSignUp(data.email, data.password);
       }
-      toast({ title: mode === 'login' ? 'Login successful!' : 'Account created!', description: "Redirecting to your dashboard..." });
-      router.push('/dashboard');
+      toast({ title: mode === 'login' ? 'Login successful!' : 'Account created!', description: "You will be redirected shortly." });
     } catch (error: any) {
       let message = 'An unknown error occurred.';
       const code = error.code;
@@ -78,8 +75,7 @@ export function UserAuthForm({ className, mode, ...props }: UserAuthFormProps) {
     setIsGoogleLoading(true);
     try {
       await handleGoogleSignIn();
-      toast({ title: 'Login successful!', description: "Redirecting to your dashboard..." });
-      router.push('/dashboard');
+      toast({ title: 'Login successful!', description: "You will be redirected shortly." });
     } catch (error: any) {
        toast({
         variant: 'destructive',
