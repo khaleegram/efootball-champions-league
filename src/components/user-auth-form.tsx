@@ -1,3 +1,4 @@
+// components/user-auth-form.tsx
 "use client";
 
 import * as React from 'react';
@@ -46,12 +47,30 @@ export function UserAuthForm({ className, mode, ...props }: UserAuthFormProps) {
       router.push('/dashboard');
       toast({ title: mode === 'login' ? 'Login successful!' : 'Account created!', description: "You're now logged in." });
     } catch (error: any) {
+      let message = 'An unknown error occurred.';
+      const code = error.code;
+    
+      if (code === 'auth/email-already-in-use') {
+        message = 'This email is already registered. Please log in instead.';
+      } else if (code === 'auth/invalid-credential') {
+        message = 'No account found with this email or password is incorrect.';
+      } else if (code === 'auth/wrong-password') {
+        message = 'Incorrect password. Please try again.';
+      } else if (code === 'auth/invalid-email') {
+        message = 'The email address is badly formatted.';
+      } else if (code === 'auth/weak-password') {
+        message = 'Password should be at least 6 characters.';
+      } else if (code === 'auth/network-request-failed') {
+        message = 'Network error. Please check your connection.';
+      }
+    
       toast({
         variant: 'destructive',
         title: 'Authentication Error',
-        description: error.message || 'An unknown error occurred.',
+        description: message,
       });
-    } finally {
+    }
+     finally {
       setIsLoading(false);
     }
   };
@@ -110,7 +129,7 @@ export function UserAuthForm({ className, mode, ...props }: UserAuthFormProps) {
             />
             {errors?.password && <p className="px-1 text-xs text-destructive">{errors.password.message}</p>}
           </div>
-          <Button disabled={isLoading || isGoogleLoading}>
+          <Button type="submit" disabled={isLoading || isGoogleLoading}>
             {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             {mode === 'login' ? 'Sign In' : 'Sign Up'} with Email
           </Button>

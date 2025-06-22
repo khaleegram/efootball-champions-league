@@ -1,3 +1,4 @@
+// app/dashboard/layout.tsx
 "use client"
 
 import { useEffect } from "react"
@@ -16,31 +17,41 @@ export default function DashboardLayout({
   const router = useRouter()
 
   useEffect(() => {
+    // If the auth state is resolved and there's no user, redirect to login.
     if (!loading && !user) {
-      router.push('/login')
+      router.replace('/login');
     }
-  }, [user, loading, router])
+  }, [user, loading, router]);
 
+  // While the auth state is being checked, display a loader.
   if (loading) {
     return (
       <div className="flex h-screen w-full items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
+    );
+  }
+
+  // If there is a user, render the dashboard. Otherwise, the useEffect
+  // will handle the redirect, and we can show a loader in the meantime.
+  if (user) {
+    return (
+      <SidebarProvider>
+          <div className="flex">
+              <DashboardSidebar />
+              <main className="flex-1 p-4 md:p-8">
+                  {children}
+              </main>
+          </div>
+      </SidebarProvider>
     )
   }
 
-  if (!user) {
-    return null
-  }
-
+  // This loader is shown for the brief moment a non-authenticated user
+  // hits this page before the redirect logic in useEffect fires.
   return (
-    <SidebarProvider>
-        <div className="flex">
-            <DashboardSidebar />
-            <main className="flex-1 p-4 md:p-8">
-                {children}
-            </main>
-        </div>
-    </SidebarProvider>
-  )
+    <div className="flex h-screen w-full items-center justify-center">
+      <Loader2 className="h-8 w-8 animate-spin text-primary" />
+    </div>
+  );
 }

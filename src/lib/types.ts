@@ -31,6 +31,7 @@ export interface Team {
   captainId: string;
 }
 
+
 export interface Match {
   id: string;
   tournamentId: string;
