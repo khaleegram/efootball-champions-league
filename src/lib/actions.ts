@@ -36,6 +36,9 @@ export async function createTournament(data: Omit<Tournament, 'id' | 'createdAt'
     if (error.message && error.message.includes("Cloud Firestore API has not been used")) {
          throw new Error("Firestore is not enabled for this project. Please go to the Firebase Console to create a Firestore database.");
     }
+    if (error.code === 16 || (error.message && error.message.includes("UNAUTHENTICATED"))) {
+        throw new Error("Authentication failed. Please check that your FIREBASE_SERVICE_ACCOUNT_KEY in the .env file is correct, has not been revoked, and that the service account has the necessary permissions ('Cloud Datastore User' or 'Editor' role) in your Google Cloud project.");
+    }
     throw new Error(`A server error occurred while creating the tournament. Reason: ${error.message}`);
   }
 }
