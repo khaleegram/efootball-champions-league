@@ -14,7 +14,13 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 const safeToDate = (date: any): Date | null => {
   if (!date) return null;
-  if (date instanceof Timestamp) return date.toDate();
+  // Check if it's an object with a toDate method, like a Firestore Timestamp
+  if (typeof date === 'object' && date !== null && typeof date.toDate === 'function') {
+    return date.toDate();
+  }
+  if (date instanceof Date) {
+    return date;
+  }
   if (typeof date === 'string' || typeof date === 'number') {
     const d = new Date(date);
     if (!isNaN(d.getTime())) return d;
