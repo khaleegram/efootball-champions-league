@@ -1,0 +1,7 @@
+{
+  "/page": "app/page.js",
+  "/tournaments/page": "app/tournaments/page.js",
+  "/tournaments/join/page": "app/tournaments/join/page.js",
+  "/dashboard/page": "app/dashboard/page.js",
+  "/dashboard/create-tournament/page": "app/dashboard/create-tournament/page.js"
+}
