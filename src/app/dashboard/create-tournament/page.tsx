@@ -21,6 +21,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { cn } from '@/lib/utils';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import type { TournamentFormat } from '@/lib/types';
+import { Switch } from '@/components/ui/switch';
+import { Separator } from '@/components/ui/separator';
 
 const tournamentSchema = z.object({
   name: z.string().min(3, { message: "Tournament name must be at least 3 characters." }),
@@ -36,6 +38,15 @@ const tournamentSchema = z.object({
   }),
   maxTeams: z.coerce.number().int().min(4, { message: "Maximum teams must be at least 4." }),
   rules: z.string().optional(),
+  
+  isPublic: z.boolean().default(true),
+  matchLength: z.coerce.number().int().min(1, "Match length must be at least 1 minute."),
+  substitutions: z.coerce.number().int().min(0, "Number of substitutions cannot be negative."),
+  extraTime: z.boolean().default(false),
+  penalties: z.boolean().default(false),
+  injuries: z.boolean().default(false),
+  homeAndAway: z.boolean().default(false),
+  squadRestrictions: z.string().optional(),
 });
 
 type TournamentFormValues = z.infer<typeof tournamentSchema>;
@@ -60,6 +71,14 @@ export default function CreateTournamentPage() {
       },
       maxTeams: 16,
       rules: '',
+      isPublic: true,
+      matchLength: 6,
+      substitutions: 5,
+      extraTime: false,
+      penalties: false,
+      injuries: false,
+      homeAndAway: false,
+      squadRestrictions: 'No specific squad restrictions.',
     },
   });
 
@@ -70,16 +89,11 @@ export default function CreateTournamentPage() {
     }
     setIsLoading(true);
     try {
+      const { dates, ...restOfValues } = values;
       const tournamentData = {
-        name: values.name,
-        description: values.description,
-        game: values.game,
-        platform: values.platform,
-        format: values.format,
-        startDate: values.dates.from,
-        endDate: values.dates.to,
-        maxTeams: values.maxTeams,
-        rules: values.rules || '',
+        ...restOfValues,
+        startDate: dates.from,
+        endDate: dates.to,
         organizerId: user.uid,
       };
 
@@ -113,6 +127,26 @@ export default function CreateTournamentPage() {
                     <Input placeholder="e.g., Sunday Night League" {...field} />
                   </FormControl>
                   <FormMessage />
+                </FormItem>
+              )}
+            />
+             <FormField
+              control={form.control}
+              name="isPublic"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                  <div className="space-y-0.5">
+                    <FormLabel className="text-base">Public Tournament</FormLabel>
+                    <FormDescription>
+                      Public tournaments are visible on the browse page. Private ones require a code to join.
+                    </FormDescription>
+                  </div>
+                  <FormControl>
+                    <Switch
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                  </FormControl>
                 </FormItem>
               )}
             />
@@ -251,14 +285,127 @@ export default function CreateTournamentPage() {
                 </FormItem>
               )}
             />
+            <Separator />
+            <div>
+              <h3 className="text-lg font-medium">Custom Rules</h3>
+              <p className="text-sm text-muted-foreground">Define the specific rules for matches in your tournament.</p>
+            </div>
+            <div className="grid md:grid-cols-2 gap-8">
+              <FormField
+                control={form.control}
+                name="matchLength"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Match Length (minutes)</FormLabel>
+                    <FormControl>
+                      <Input type="number" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="substitutions"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Substitutions per Match</FormLabel>
+                    <Select onValueChange={(val) => field.onChange(Number(val))} defaultValue={String(field.value)}>
+                        <FormControl>
+                            <SelectTrigger>
+                                <SelectValue placeholder="Select number of subs" />
+                            </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                            <SelectItem value="3">3</SelectItem>
+                            <SelectItem value="5">5</SelectItem>
+                            <SelectItem value="7">7</SelectItem>
+                        </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+             <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
+                 <FormField
+                    control={form.control}
+                    name="extraTime"
+                    render={({ field }) => (
+                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3">
+                        <div className="space-y-0.5">
+                            <FormLabel>Extra Time</FormLabel>
+                        </div>
+                        <FormControl>
+                            <Switch checked={field.value} onCheckedChange={field.onChange} />
+                        </FormControl>
+                        </FormItem>
+                    )}
+                />
+                 <FormField
+                    control={form.control}
+                    name="penalties"
+                    render={({ field }) => (
+                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3">
+                        <div className="space-y-0.5">
+                            <FormLabel>Penalties</FormLabel>
+                        </div>
+                        <FormControl>
+                            <Switch checked={field.value} onCheckedChange={field.onChange} />
+                        </FormControl>
+                        </FormItem>
+                    )}
+                />
+                 <FormField
+                    control={form.control}
+                    name="injuries"
+                    render={({ field }) => (
+                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3">
+                        <div className="space-y-0.5">
+                            <FormLabel>Injuries</FormLabel>
+                        </div>
+                        <FormControl>
+                            <Switch checked={field.value} onCheckedChange={field.onChange} />
+                        </FormControl>
+                        </FormItem>
+                    )}
+                />
+                 <FormField
+                    control={form.control}
+                    name="homeAndAway"
+                    render={({ field }) => (
+                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3">
+                        <div className="space-y-0.5">
+                            <FormLabel>Home/Away</FormLabel>
+                        </div>
+                        <FormControl>
+                            <Switch checked={field.value} onCheckedChange={field.onChange} />
+                        </FormControl>
+                        </FormItem>
+                    )}
+                />
+            </div>
+            <FormField
+              control={form.control}
+              name="squadRestrictions"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Squad Restrictions</FormLabel>
+                  <FormControl>
+                    <Textarea placeholder="e.g., Max 3 legendary players, only silver ball players allowed." {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
             <FormField
               control={form.control}
               name="rules"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Rules</FormLabel>
+                  <FormLabel>General Rules / Code of Conduct</FormLabel>
                   <FormControl>
-                    <Textarea placeholder="Detail any specific rules for your tournament." {...field} />
+                    <Textarea placeholder="Detail any other general rules for your tournament." {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

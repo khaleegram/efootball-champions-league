@@ -27,6 +27,16 @@ export interface Tournament {
   createdAt?: Timestamp;
   format: TournamentFormat;
   status: TournamentStatus;
+  // New fields
+  code: string;
+  isPublic: boolean;
+  matchLength: number;
+  extraTime: boolean;
+  penalties: boolean;
+  squadRestrictions: string;
+  injuries: boolean;
+  homeAndAway: boolean;
+  substitutions: number;
 }
 
 export interface Team {

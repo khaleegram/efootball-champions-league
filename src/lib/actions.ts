@@ -18,7 +18,16 @@ export async function updateUserProfile(uid: string, data: Partial<UserProfile>)
 }
 
 // TOURNAMENT ACTIONS
-export async function createTournament(data: Omit<Tournament, 'id' | 'createdAt' | 'status'> & { organizerId: string }) {
+
+/**
+ * Generates a random 6-character alphanumeric uppercase code.
+ */
+const generateUniqueCode = (): string => {
+  return Math.random().toString(36).substring(2, 8).toUpperCase();
+};
+
+
+export async function createTournament(data: Omit<Tournament, 'id' | 'createdAt' | 'status' | 'code'> & { organizerId: string }) {
   const adminDb = getAdminDb();
   try {
     const { startDate, endDate, ...rest } = data;
@@ -27,12 +36,16 @@ export async function createTournament(data: Omit<Tournament, 'id' | 'createdAt'
     const startDateObj = new Date(startDate as any);
     const endDateObj = new Date(endDate as any);
     
+    // TODO: In a production app, you'd want to ensure the code is truly unique by checking the DB.
+    const code = generateUniqueCode();
+
     const docRef = await adminDb.collection('tournaments').add({
       ...rest,
       startDate: Timestamp.fromDate(startDateObj),
       endDate: Timestamp.fromDate(endDateObj),
       status: 'open_for_registration',
       createdAt: FieldValue.serverTimestamp(),
+      code: code,
     });
     return docRef.id;
   } catch (error: any) {
@@ -42,11 +55,31 @@ export async function createTournament(data: Omit<Tournament, 'id' | 'createdAt'
          throw new Error("Firestore is not enabled for this project. Please go to the Firebase Console to create a Firestore database.");
     }
     if (error.code === 16 || (error.message && error.message.includes("UNAUTHENTICATED"))) {
-        throw new Error("Authentication failed. Please check that your FIREBASE_SERVICE_ACCOUNT_KEY in the .env file is correct, has not been revoked, and that the service account has the necessary permissions ('Cloud Datastore User' or 'Editor' role) in your Google Cloud project.");
+        throw new Error("Authentication failed. Please check your service account credentials and permissions.");
     }
     throw new Error(`A server error occurred while creating the tournament. Reason: ${error.message}`);
   }
 }
+
+
+export async function findTournamentByCode(code: string): Promise<string | null> {
+    const adminDb = getAdminDb();
+    try {
+        const uppercaseCode = code.toUpperCase();
+        const tournamentsRef = adminDb.collection('tournaments');
+        const q = tournamentsRef.where('code', '==', uppercaseCode).limit(1);
+        const querySnapshot = await q.get();
+
+        if (querySnapshot.empty) {
+            return null;
+        }
+        return querySnapshot.docs[0].id;
+    } catch (error) {
+        console.error("Error finding tournament by code:", error);
+        throw new Error("Failed to search for tournament.");
+    }
+}
+
 
 // TEAM ACTIONS
 export async function addTeam(tournamentId: string, teamData: Omit<Team, 'id' | 'tournamentId'>) {

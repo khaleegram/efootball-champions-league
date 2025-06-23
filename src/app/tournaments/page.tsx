@@ -3,14 +3,15 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { db } from '@/lib/firebase';
-import { collection, query, onSnapshot, orderBy, type Timestamp } from 'firebase/firestore';
+import { collection, query, onSnapshot, orderBy, where } from 'firebase/firestore';
 import type { Tournament } from '@/lib/types';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, KeyRound } from 'lucide-react';
 import { format } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Input } from '@/components/ui/input';
 
 const safeToDate = (date: any): Date | null => {
   if (!date) return null;
@@ -31,9 +32,11 @@ const safeToDate = (date: any): Date | null => {
 export default function BrowseTournamentsPage() {
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
-    const q = query(collection(db, 'tournaments'), orderBy('startDate', 'desc'));
+    // Only fetch public tournaments
+    const q = query(collection(db, 'tournaments'), where("isPublic", "==", true), orderBy('startDate', 'desc'));
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
       const allTournaments = querySnapshot.docs.map((doc) => {
         const data = doc.data();
@@ -52,11 +55,31 @@ export default function BrowseTournamentsPage() {
     return () => unsubscribe();
   }, []);
 
+  const filteredTournaments = tournaments.filter(tournament =>
+    tournament.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   return (
     <div className="container py-10">
       <div className="space-y-8">
-        <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-bold font-headline">Browse Tournaments</h1>
+        <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+          <h1 className="text-3xl font-bold font-headline">Browse Public Tournaments</h1>
+          <Link href="/tournaments/join">
+            <Button variant="outline">
+              <KeyRound className="mr-2" /> Join with Code
+            </Button>
+          </Link>
+        </div>
+        
+        <div className="relative">
+            <Input 
+                type="text"
+                placeholder="Search public tournaments..."
+                value={searchTerm}
+                onChange={e => setSearchTerm(e.target.value)}
+                className="pl-8"
+            />
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path></svg>
         </div>
         
         {loading ? (
@@ -78,14 +101,14 @@ export default function BrowseTournamentsPage() {
               </Card>
             ))}
           </div>
-        ) : tournaments.length === 0 ? (
+        ) : filteredTournaments.length === 0 ? (
           <div className="text-center py-16 border-2 border-dashed rounded-lg">
             <h2 className="text-xl font-semibold">No tournaments found.</h2>
-            <p className="text-muted-foreground mt-2">Check back later for new competitions!</p>
+            <p className="text-muted-foreground mt-2">{searchTerm ? "Try a different search term." : "Check back later for new competitions!"}</p>
           </div>
         ) : (
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {tournaments.map((tournament) => {
+            {filteredTournaments.map((tournament) => {
                 const startDate = safeToDate(tournament.startDate);
                 const endDate = safeToDate(tournament.endDate);
                 return (
