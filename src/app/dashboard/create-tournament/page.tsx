@@ -173,7 +173,7 @@ export default function CreateTournamentPage() {
                       <FormControl>
                          <Input {...field} />
                       </FormControl>
-                      <FormDescription>e.g., eFootball 2024, FIFA 24</FormDescription>
+                      <FormDescription>e.g., eFootball 2025</FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -191,9 +191,6 @@ export default function CreateTournamentPage() {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="PS5">PS5</SelectItem>
-                          <SelectItem value="Xbox Series X">Xbox Series X</SelectItem>
-                          <SelectItem value="PC">PC</SelectItem>
                           <SelectItem value="Mobile">Mobile</SelectItem>
                         </SelectContent>
                       </Select>

@@ -22,7 +22,7 @@ export interface Tournament {
   startDate: Date | Timestamp; 
   endDate: Date | Timestamp;
   maxTeams: number;
-  rules: string;
+  rules?: string;
   organizerId: string;
   createdAt?: Timestamp;
   format: TournamentFormat;
