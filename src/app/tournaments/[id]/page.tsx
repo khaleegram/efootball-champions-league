@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { notFound, useParams } from 'next/navigation';
-import { doc, onSnapshot, type Timestamp } from 'firebase/firestore';
+import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from "@/hooks/use-auth";
 import type { Tournament } from "@/lib/types";
@@ -14,14 +14,33 @@ import { TeamsTab } from "./teams-tab";
 import { FixturesTab } from "./fixtures-tab";
 import { StandingsTab } from "./standings-tab";
 
-// Helper function to safely convert Firestore Timestamps or strings to Date objects
+// IMPORTANT: To correctly use instanceof Timestamp, you need to import the Timestamp class itself,
+// not just its type.
+// However, a more robust way is to check for the .toDate() method,
+// which is common to both Firestore's Timestamp and potentially Date objects if you're pre-converting.
+
+// Helper function to safely convert Firestore Timestamps or strings/numbers to Date objects
 const toDate = (date: any): Date | null => {
   if (!date) return null;
-  if (date instanceof Timestamp) {
+
+  // Check if it's an object that has a .toDate() method (like Firestore Timestamp)
+  if (typeof date === 'object' && date !== null && typeof date.toDate === 'function') {
     return date.toDate();
   }
+
+  // If it's already a Date object
+  if (date instanceof Date) {
+    return date;
+  }
+
+  // If it's a string or number that can be converted to a Date
   if (typeof date === 'string' || typeof date === 'number') {
-    return new Date(date);
+    try {
+      return new Date(date);
+    } catch (e) {
+      console.error("Failed to parse date string/number:", e);
+      return null;
+    }
   }
   return null; // Return null if the date is not a recognizable type
 };
@@ -45,8 +64,8 @@ export default function TournamentPage() {
           description: data.description || '',
           game: data.game || '',
           platform: data.platform || '',
-          startDate: data.startDate, // Keep as is initially
-          endDate: data.endDate, // Keep as is initially
+          startDate: data.startDate, // Keep as is initially, to be converted by toDate
+          endDate: data.endDate,     // Keep as is initially, to be converted by toDate
           maxTeams: data.maxTeams || 0,
           rules: data.rules || '',
           organizerId: data.organizerId || '',
@@ -80,9 +99,10 @@ export default function TournamentPage() {
   }
 
   const isOrganizer = user?.uid === tournament.organizerId;
+  // Now, toDate will check if the object has a .toDate() method, which Firestore Timestamps do.
   const startDate = toDate(tournament.startDate);
   const endDate = toDate(tournament.endDate);
-  
+
   return (
     <div className="container py-10">
       <div className="flex flex-col md:flex-row gap-8">
@@ -91,7 +111,7 @@ export default function TournamentPage() {
             <h1 className="font-headline text-4xl font-bold">{tournament.name}</h1>
             <p className="text-lg text-muted-foreground">{tournament.description}</p>
           </div>
-          
+
           <div className="space-y-3 text-sm">
             <div className="flex items-center gap-2">
               <Gamepad2 className="h-4 w-4 text-muted-foreground" />
@@ -113,7 +133,7 @@ export default function TournamentPage() {
             </div>
           </div>
         </div>
-        
+
         <div className="w-full md:w-2/3 lg:w-3/4">
           <Tabs defaultValue="overview" className="w-full">
             <TabsList className="grid w-full grid-cols-2 md:grid-cols-4">

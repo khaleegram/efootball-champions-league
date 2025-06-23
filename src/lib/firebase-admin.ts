@@ -1,43 +1,56 @@
-
 import admin from 'firebase-admin';
-import type { App } from 'firebase-admin/app';
-import type { Auth } from 'firebase-admin/auth';
-import type { Firestore } from 'firebase-admin/firestore';
 
-let adminApp: App | undefined;
+// Initialize only once
+let adminApp: admin.app.App | null = null;
+let adminDb: admin.firestore.Firestore | null = null;
+let adminAuth: admin.auth.Auth | null = null;
 
-function ensureAdminInitialized(): void {
-  if (admin.apps.length > 0 && admin.apps[0]) {
-    adminApp = admin.apps[0];
-    return;
+const initializeFirebaseAdmin = () => {
+  if (adminApp) return;
+
+  const {
+    FIREBASE_PROJECT_ID,
+    FIREBASE_CLIENT_EMAIL,
+    FIREBASE_PRIVATE_KEY,
+  } = process.env;
+
+  // Validate critical variables
+  if (!FIREBASE_PROJECT_ID || !FIREBASE_CLIENT_EMAIL || !FIREBASE_PRIVATE_KEY) {
+    throw new Error("Missing Firebase Admin environment variables");
   }
-  
-  if (!process.env.FIREBASE_SERVICE_ACCOUNT_KEY) {
-    throw new Error('CRITICAL: FIREBASE_SERVICE_ACCOUNT_KEY is not set in the environment variables. Server-side features like creating tournaments will not work. Please go to your Firebase project settings, generate a new private key, and add it to your .env file.');
-  }
+
+  // **** KEY CHANGE HERE: Use privateKey directly after trimming whitespace ****
+  const privateKey = FIREBASE_PRIVATE_KEY.trim();
 
   try {
-    const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY);
-    
-    // Let Firebase Admin infer the project ID from the credential itself.
-    // This is more robust and avoids potential mismatches with other environment variables.
     adminApp = admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount)
+      credential: admin.credential.cert({
+        projectId: FIREBASE_PROJECT_ID,
+        clientEmail: FIREBASE_CLIENT_EMAIL,
+        privateKey: privateKey, // Pass the privateKey string directly
+      }),
     });
-  } catch (error: any) {
-    console.error('Firebase admin initialization error:', error);
-    throw new Error("Could not initialize Firebase Admin SDK. Your FIREBASE_SERVICE_ACCOUNT_KEY in the .env file might be a malformed JSON string. Please ensure it is a single line enclosed in single quotes, like `FIREBASE_SERVICE_ACCOUNT_KEY='{\"key\": \"value\" ...}'`.");
+
+    adminDb = adminApp.firestore();
+    adminAuth = adminApp.auth();
+
+    console.log('✅ Firebase Admin SDK initialized');
+  } catch (error) {
+    console.error('🔥 Firebase initialization error:', error);
+    // console.error('Problematic privateKey (debug only):', privateKey); // UNCOMMENT FOR DEBUGGING IF IT FAILS AGAIN
+    throw new Error('Failed to initialize Firebase Admin SDK');
   }
-}
+};
 
-function getAdminDb(): Firestore {
-  ensureAdminInitialized();
-  return admin.firestore(adminApp);
-}
+export const getAdminDb = (): admin.firestore.Firestore => {
+  if (!adminDb) initializeFirebaseAdmin();
+  return adminDb!;
+};
 
-function getAdminAuth(): Auth {
-  ensureAdminInitialized();
-  return admin.auth(adminApp);
-}
+export const getAdminAuth = (): admin.auth.Auth => {
+  if (!adminAuth) initializeFirebaseAdmin();
+  return adminAuth!;
+};
 
-export { getAdminDb, getAdminAuth, admin };
+// Export Firestore types for direct use
+export { Timestamp, FieldValue } from 'firebase-admin/firestore';
